@@ -30,10 +30,13 @@ export function PromptWorkspaceSelector(props: {
     if (value) props.onChange(value)
     props.onDone()
   }
-  const label = () => {
-    if (selected() === "main") return props.projectRoot
-    return props.value
+  const workspaceLabel = (workspace: string) => {
+    if (workspace === "main" || workspace === props.projectRoot) return "main"
+    const prefix = `${props.projectRoot}-`
+    if (workspace.startsWith(prefix)) return workspace.slice(prefix.length)
+    return workspace
   }
+  const label = () => workspaceLabel(props.value)
 
   return (
     <>
@@ -50,7 +53,7 @@ export function PromptWorkspaceSelector(props: {
               <MenuV2.GroupLabel>{language.t("session.new.workspace.runIn")}</MenuV2.GroupLabel>
               <MenuV2.Item onSelect={() => select(props.projectRoot)}>
                 <IconV2 name="monitor" />
-                <span class="min-w-0 flex-1 break-all whitespace-normal">{props.projectRoot}</span>
+                <span class="min-w-0 flex-1 break-all whitespace-normal">{workspaceLabel(props.projectRoot)}</span>
                 <Show when={selected() === "main"}>
                   <Icon name="check" size="small" class="shrink-0" />
                 </Show>
@@ -58,27 +61,20 @@ export function PromptWorkspaceSelector(props: {
             </MenuV2.Group>
             <Show when={props.workspaces.length > 0}>
               <MenuV2.Separator />
-              <MenuV2.Sub gutter={0} overlap overflowPadding={8}>
-                <MenuV2.SubTrigger>
-                  <IconV2 name="workspace" />
-                  {language.t("session.new.workspace.existing")}
-                </MenuV2.SubTrigger>
-                <MenuV2.Portal>
-                  <MenuV2.SubContent class="max-w-[200px]">
-                    <For each={props.workspaces}>
-                      {(workspace) => (
-                        <MenuV2.Item onSelect={() => select(workspace)}>
-                          <IconV2 name="workspace-isolated" />
-                          <span class="min-w-0 flex-1 break-all whitespace-normal">{workspace}</span>
-                          <Show when={selected() === workspace}>
-                            <Icon name="check" size="small" class="shrink-0" />
-                          </Show>
-                        </MenuV2.Item>
-                      )}
-                    </For>
-                  </MenuV2.SubContent>
-                </MenuV2.Portal>
-              </MenuV2.Sub>
+              <MenuV2.Group>
+                <MenuV2.GroupLabel>{language.t("session.new.workspace.existing")}</MenuV2.GroupLabel>
+                <For each={props.workspaces}>
+                  {(workspace) => (
+                    <MenuV2.Item onSelect={() => select(workspace)}>
+                      <IconV2 name="workspace-isolated" />
+                      <span class="min-w-0 flex-1 break-all whitespace-normal">{workspaceLabel(workspace)}</span>
+                      <Show when={selected() === workspace}>
+                        <Icon name="check" size="small" class="shrink-0" />
+                      </Show>
+                    </MenuV2.Item>
+                  )}
+                </For>
+              </MenuV2.Group>
             </Show>
           </MenuV2.Content>
         </MenuV2.Portal>
