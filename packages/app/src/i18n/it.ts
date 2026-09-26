@@ -683,7 +683,7 @@ export const dict = {
   "session.new.workspace.runIn": "Esegui la sessione in",
   "session.new.workspace.triggerLocal": "Locale",
   "session.new.workspace.local": "Repository locale",
-  "session.new.workspace.existing": "Directory degli alberi di lavoro",
+  "session.new.workspace.existing": "Directory dei worktree",
   "session.new.git.none": "Senza Git",
   "session.new.lastModified": "Ultima modifica",
   "session.header.search.placeholder": "Cerca {{project}}",

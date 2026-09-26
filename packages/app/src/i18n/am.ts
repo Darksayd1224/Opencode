@@ -751,7 +751,7 @@ export const dict = {
   "session.new.workspace.runIn": "ክፍለ ጊዜን በ ውስጥ ያሂዱ",
   "session.new.workspace.triggerLocal": "አካባቢ",
   "session.new.workspace.local": "አካባቢያዊ ማከማቻ",
-  "session.new.workspace.existing": "የGit worktree ማውጫዎች",
+  "session.new.workspace.existing": "የሥራ ዛፍ ማውጫዎች",
   "session.new.git.none": "ያለ Git",
   "session.new.lastModified": "መጨረሻ የተሻሻለው",
   "session.header.search.placeholder": "ፍለጋ {{project}}",

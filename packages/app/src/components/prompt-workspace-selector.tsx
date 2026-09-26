@@ -9,7 +9,7 @@ export function PromptWorkspaceSelector(props: {
   value: string
   projectRoot: string
   projectBranch?: string
-  workspaces: string[]
+  workspaces: { directory: string; branch?: string }[]
   onChange: (value: string) => void
   onDone: () => void
 }) {
@@ -78,10 +78,18 @@ export function PromptWorkspaceSelector(props: {
                 <MenuV2.GroupLabel>{language.t("session.new.workspace.existing")}</MenuV2.GroupLabel>
                 <For each={props.workspaces}>
                   {(workspace) => (
-                    <MenuV2.Item onSelect={() => select(workspace)}>
-                      <IconV2 name="workspace-isolated" />
-                      <span class="min-w-0 flex-1 break-all whitespace-normal">{workspaceLabel(workspace)}</span>
-                      <Show when={selected() === workspace}>
+                    <MenuV2.Item onSelect={() => select(workspace.directory)}>
+                      <Icon name="folder" size="small" />
+                      <span class="min-w-0 flex-1 break-all whitespace-normal">
+                        {workspaceLabel(workspace.directory)}
+                      </span>
+                      <Show when={workspace.branch}>
+                        <span class="flex min-w-0 items-center gap-1.5 text-v2-text-text-muted">
+                          <Icon name="branch" size="small" class="shrink-0" />
+                          <span class="truncate">{workspace.branch}</span>
+                        </span>
+                      </Show>
+                      <Show when={selected() === workspace.directory}>
                         <Icon name="check" size="small" class="shrink-0" />
                       </Show>
                     </MenuV2.Item>

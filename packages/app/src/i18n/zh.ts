@@ -797,7 +797,7 @@ export const dict = {
   "session.new.workspace.runIn": "运行会话的位置",
   "session.new.workspace.triggerLocal": "本地",
   "session.new.workspace.local": "本地仓库",
-  "session.new.workspace.existing": "工作区目录",
+  "session.new.workspace.existing": "工作树目录",
   "session.new.git.none": "无 Git",
   "session.new.lastModified": "最后修改",
   "session.header.search.placeholder": "搜索 {{project}}",

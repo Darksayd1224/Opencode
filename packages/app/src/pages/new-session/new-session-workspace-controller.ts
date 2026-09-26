@@ -65,7 +65,11 @@ export function createNewSessionWorkspaceController() {
     project: {
       root: projectRoot,
       branch: localBranch,
-      workspaces: () => sync().project?.sandboxes ?? [],
+      workspaces: () =>
+        (sync().project?.sandboxes ?? []).map((directory) => ({
+          directory,
+          branch: serverSync().child(directory)[0].vcs?.branch,
+        })),
       git: () => sync().project?.vcs === "git",
     },
     bar: {

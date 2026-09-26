@@ -794,7 +794,7 @@ export const dict = {
   "session.new.workspace.runIn": "工作階段執行位置",
   "session.new.workspace.triggerLocal": "本機",
   "session.new.workspace.local": "本機儲存庫",
-  "session.new.workspace.existing": "工作區目錄",
+  "session.new.workspace.existing": "工作樹目錄",
   "session.new.git.none": "無 Git",
   "session.new.lastModified": "最後修改",
 
