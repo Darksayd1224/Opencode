@@ -64,6 +64,7 @@ export function createNewSessionWorkspaceController() {
     },
     project: {
       root: projectRoot,
+      branch: localBranch,
       workspaces: () => sync().project?.sandboxes ?? [],
       git: () => sync().project?.vcs === "git",
     },

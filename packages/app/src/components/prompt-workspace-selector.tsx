@@ -8,6 +8,7 @@ import { useLanguage } from "@/context/language"
 export function PromptWorkspaceSelector(props: {
   value: string
   projectRoot: string
+  projectBranch?: string
   workspaces: string[]
   onChange: (value: string) => void
   onDone: () => void
@@ -16,7 +17,6 @@ export function PromptWorkspaceSelector(props: {
   let pending: string | undefined
   const selected = () => (props.value === props.projectRoot ? "main" : props.value)
   const icon = () => {
-    if (selected() === "main") return "monitor"
     if (selected() === "create") return "workspace-new"
     return "workspace"
   }
@@ -36,14 +36,25 @@ export function PromptWorkspaceSelector(props: {
     if (workspace.startsWith(prefix)) return workspace.slice(prefix.length)
     return workspace
   }
-  const label = () => workspaceLabel(props.value)
+  const projectLabel = () => props.projectBranch ?? props.projectRoot
+  const label = () => (selected() === "main" ? projectLabel() : workspaceLabel(props.value))
 
   return (
     <>
       <span class="hidden select-none opacity-50 sm:inline mx-1">/</span>
       <MenuV2 placement="bottom" gutter={4} onOpenChange={onOpenChange}>
         <MenuV2.Trigger class="flex min-w-0 max-w-full items-center gap-1.5 rounded-sm px-1.5 py-1 text-left hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none data-[expanded]:bg-v2-overlay-simple-overlay-pressed data-[expanded]:text-v2-text-text-muted">
-          <IconV2 name={icon()} class="shrink-0 text-v2-icon-icon-muted" />
+          <Show
+            when={selected() === "main"}
+            fallback={<IconV2 name={icon()} class="shrink-0 text-v2-icon-icon-muted" />}
+          >
+            <Show
+              when={props.projectBranch}
+              fallback={<IconV2 name="monitor" class="shrink-0 text-v2-icon-icon-muted" />}
+            >
+              <Icon name="branch" size="small" class="shrink-0 text-v2-icon-icon-muted" />
+            </Show>
+          </Show>
           <span class="min-w-0 break-all whitespace-normal">{label()}</span>
           <Icon name="chevron-down" size="small" class="shrink-0 text-v2-icon-icon-muted" />
         </MenuV2.Trigger>
@@ -52,8 +63,10 @@ export function PromptWorkspaceSelector(props: {
             <MenuV2.Group>
               <MenuV2.GroupLabel>{language.t("session.new.workspace.runIn")}</MenuV2.GroupLabel>
               <MenuV2.Item onSelect={() => select(props.projectRoot)}>
-                <IconV2 name="monitor" />
-                <span class="min-w-0 flex-1 break-all whitespace-normal">{workspaceLabel(props.projectRoot)}</span>
+                <Show when={props.projectBranch} fallback={<IconV2 name="monitor" />}>
+                  <Icon name="branch" size="small" />
+                </Show>
+                <span class="min-w-0 flex-1 break-all whitespace-normal">{projectLabel()}</span>
                 <Show when={selected() === "main"}>
                   <Icon name="check" size="small" class="shrink-0" />
                 </Show>
