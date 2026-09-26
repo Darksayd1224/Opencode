@@ -55,7 +55,7 @@ export function PromptWorkspaceSelector(props: {
               <Icon name="branch" size="small" class="shrink-0 text-v2-icon-icon-muted" />
             </Show>
           </Show>
-          <span class="min-w-0 break-all whitespace-normal">{label()}</span>
+          <span class="min-w-0 truncate text-v2-text-text-muted">{label()}</span>
           <Icon name="chevron-down" size="small" class="shrink-0 text-v2-icon-icon-muted" />
         </MenuV2.Trigger>
         <MenuV2.Portal>
@@ -66,7 +66,7 @@ export function PromptWorkspaceSelector(props: {
                 <Show when={props.projectBranch} fallback={<IconV2 name="monitor" />}>
                   <Icon name="branch" size="small" />
                 </Show>
-                <span class="min-w-0 flex-1 break-all whitespace-normal">{projectLabel()}</span>
+                <span class="min-w-0 flex-1 truncate text-v2-text-text-muted">{projectLabel()}</span>
                 <Show when={selected() === "main"}>
                   <Icon name="check" size="small" class="shrink-0" />
                 </Show>
@@ -80,11 +80,11 @@ export function PromptWorkspaceSelector(props: {
                   {(workspace) => (
                     <MenuV2.Item onSelect={() => select(workspace.directory)}>
                       <Icon name="folder" size="small" />
-                      <span class="min-w-0 flex-1 break-all whitespace-normal">
+                      <span class="min-w-0 flex-1 truncate text-v2-text-text-muted">
                         {workspaceLabel(workspace.directory)}
                       </span>
                       <Show when={workspace.branch}>
-                        <span class="flex min-w-0 items-center gap-1.5 text-v2-text-text-muted">
+                        <span class="flex min-w-0 flex-1 items-center gap-1.5 text-v2-text-text-muted">
                           <Icon name="branch" size="small" class="shrink-0" />
                           <span class="truncate">{workspace.branch}</span>
                         </span>
