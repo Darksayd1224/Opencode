@@ -221,6 +221,8 @@ export type PromptProjectController = ReturnType<typeof createPromptProjectContr
 export function PromptProjectSelector(props: {
   controller: PromptProjectController
   placement?: "bottom" | "bottom-start"
+  onTrigger?: (element: HTMLButtonElement) => void
+  style?: string
 }) {
   const [triggerReady, setTriggerReady] = createSignal(false)
   let contentRef: HTMLDivElement | undefined
@@ -229,6 +231,7 @@ export function PromptProjectSelector(props: {
 
   // Floating UI requires a connected anchor; route transitions can construct this trigger before adoption.
   const setTriggerRef = (element: HTMLButtonElement) => {
+    props.onTrigger?.(element)
     const ready = () => {
       if (!element.isConnected) {
         triggerFrame = requestAnimationFrame(ready)
@@ -329,7 +332,7 @@ export function PromptProjectSelector(props: {
         props.controller.setOpen(open)
       }}
     >
-      <Menu.Trigger as={ProjectTrigger} ref={setTriggerRef} controller={props.controller} />
+      <Menu.Trigger as={ProjectTrigger} ref={setTriggerRef} controller={props.controller} style={props.style} />
       <Menu.Portal>
         <Menu.Content
           ref={contentRef}
@@ -516,7 +519,7 @@ function ProjectTrigger(props: ComponentProps<"button"> & { controller: PromptPr
       {...rest}
       data-action="prompt-project"
       type="button"
-      class="flex h-7 min-w-0 max-w-[203px] items-center gap-1.5 rounded-sm px-1.5 transition-colors focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none"
+      class="flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-sm px-1.5 transition-colors focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none"
       classList={{
         ...local.classList,
         "hover:bg-v2-overlay-simple-overlay-hover": !local.controller.open(),

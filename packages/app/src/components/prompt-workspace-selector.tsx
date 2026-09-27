@@ -12,6 +12,8 @@ export function PromptWorkspaceSelector(props: {
   workspaces: { directory: string; branch?: string }[]
   onChange: (value: string) => void
   onDone: () => void
+  onTrigger?: (element: HTMLButtonElement) => void
+  style?: string
 }) {
   const language = useLanguage()
   let pending: string | undefined
@@ -40,7 +42,7 @@ export function PromptWorkspaceSelector(props: {
     <>
       <span class="hidden select-none opacity-50 sm:inline mx-1">/</span>
       <MenuV2 placement="bottom" gutter={4} onOpenChange={onOpenChange}>
-        <MenuV2.Trigger class="flex min-w-0 max-w-full items-center gap-1.5 rounded-sm px-1.5 py-1 text-left hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none data-[expanded]:bg-v2-overlay-simple-overlay-pressed data-[expanded]:text-v2-text-text-muted">
+        <MenuV2.Trigger ref={props.onTrigger} style={props.style} class="flex min-w-0 max-w-full items-center gap-1.5 rounded-sm px-1.5 py-1 text-left hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none data-[expanded]:bg-v2-overlay-simple-overlay-pressed data-[expanded]:text-v2-text-text-muted">
           <Show
             when={selected() === "main"}
             fallback={<Icon name="folder" size="small" class="shrink-0 text-v2-icon-icon-muted" />}
