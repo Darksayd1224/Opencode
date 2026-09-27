@@ -760,7 +760,7 @@ export const dict = {
   "session.new.workspace.runIn": "Käivitage seanss",
   "session.new.workspace.triggerLocal": "Kohalik",
   "session.new.workspace.local": "Kohalik hoidla",
-  "session.new.workspace.existing": "Tööpuukataloogid",
+  "session.new.workspace.existing": "Tööruum…",
   "session.new.git.none": "Ei Git",
   "session.new.lastModified": "Viimati muudetud",
   "session.header.search.placeholder": "Otsi {{project}}",

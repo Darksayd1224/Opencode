@@ -747,7 +747,7 @@ export const dict = {
   "session.new.workspace.runIn": "セッションの実行先",
   "session.new.workspace.triggerLocal": "ローカル",
   "session.new.workspace.local": "ローカルリポジトリ",
-  "session.new.workspace.existing": "ワークツリーのディレクトリ",
+  "session.new.workspace.existing": "ワークスペース…",
   "session.new.git.none": "Git なし",
   "session.new.lastModified": "最終更新",
   "session.header.search.placeholder": "{{project}}を検索",

@@ -771,7 +771,7 @@ export const dict = {
   "session.new.workspace.runIn": "Futtassa a munkamenetet",
   "session.new.workspace.triggerLocal": "Helyi",
   "session.new.workspace.local": "Helyi adattár",
-  "session.new.workspace.existing": "Munkafakönyvtárak",
+  "session.new.workspace.existing": "Munkaterület…",
   "session.new.git.none": "Nincs Git",
   "session.new.lastModified": "Utoljára módosítva",
   "session.header.search.placeholder": "Keresés {{project}}",

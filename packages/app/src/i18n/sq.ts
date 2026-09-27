@@ -767,7 +767,7 @@ export const dict = {
   "session.new.workspace.runIn": "Drejtoni seancën brenda",
   "session.new.workspace.triggerLocal": "Lokale",
   "session.new.workspace.local": "Depo lokale",
-  "session.new.workspace.existing": "Drejtoritë e pemëve të punës",
+  "session.new.workspace.existing": "Hapësira e punës…",
   "session.new.git.none": "Jo Git",
   "session.new.lastModified": "Ndryshuar së fundi",
   "session.header.search.placeholder": "Kërko {{project}}",

@@ -770,7 +770,7 @@ export const dict = {
   "session.new.workspace.runIn": "Spustit relaci",
   "session.new.workspace.triggerLocal": "Místní",
   "session.new.workspace.local": "Místní úložiště",
-  "session.new.workspace.existing": "Adresáře pracovních stromů",
+  "session.new.workspace.existing": "Pracovní prostor…",
   "session.new.git.none": "ne Git",
   "session.new.lastModified": "Naposledy upraveno",
   "session.header.search.placeholder": "Hledat {{project}}",

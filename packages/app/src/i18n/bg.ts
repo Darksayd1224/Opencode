@@ -770,7 +770,7 @@ export const dict = {
   "session.new.workspace.runIn": "Стартирайте сесията",
   "session.new.workspace.triggerLocal": "Местен",
   "session.new.workspace.local": "Локално хранилище",
-  "session.new.workspace.existing": "Директории на работните дървета",
+  "session.new.workspace.existing": "Работно пространство…",
   "session.new.git.none": "Не Git",
   "session.new.lastModified": "Последна промяна",
   "session.header.search.placeholder": "Търсене {{project}}",

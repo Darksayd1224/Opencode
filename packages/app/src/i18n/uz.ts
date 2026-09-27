@@ -769,7 +769,7 @@ export const dict = {
   "session.new.workspace.runIn": "Seansni ishga tushirish",
   "session.new.workspace.triggerLocal": "Mahalliy",
   "session.new.workspace.local": "Mahalliy ombor",
-  "session.new.workspace.existing": "Ishchi daraxt kataloglari",
+  "session.new.workspace.existing": "Ish maydoni…",
   "session.new.git.none": "Git yo'q",
   "session.new.lastModified": "Oxirgi tahrirlangan",
   "session.header.search.placeholder": "Qidiruv {{project}}",

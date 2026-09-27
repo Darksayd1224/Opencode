@@ -767,7 +767,7 @@ export const dict = {
   "session.new.workspace.runIn": "Keyra setu í",
   "session.new.workspace.triggerLocal": "Staðbundið",
   "session.new.workspace.local": "Staðbundin geymsla",
-  "session.new.workspace.existing": "Vinnutrésmöppur",
+  "session.new.workspace.existing": "Vinnurými…",
   "session.new.git.none": "Engin Git",
   "session.new.lastModified": "Síðast breytt",
   "session.header.search.placeholder": "Leitaðu að {{project}}",

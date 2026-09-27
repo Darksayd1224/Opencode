@@ -768,7 +768,7 @@ export const dict = {
   "session.new.workspace.runIn": "Покрените сесију у",
   "session.new.workspace.triggerLocal": "локално",
   "session.new.workspace.local": "Локално спремиште",
-  "session.new.workspace.existing": "Директоријуми радних стабала",
+  "session.new.workspace.existing": "Радни простор…",
   "session.new.git.none": "Не Git",
   "session.new.lastModified": "Последња измена",
   "session.header.search.placeholder": "Претрага {{project}}",

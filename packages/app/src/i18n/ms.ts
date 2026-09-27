@@ -762,7 +762,7 @@ export const dict = {
   "session.new.workspace.runIn": "Jalankan sesi dalam",
   "session.new.workspace.triggerLocal": "Setempat",
   "session.new.workspace.local": "Repositori setempat",
-  "session.new.workspace.existing": "Direktori worktree",
+  "session.new.workspace.existing": "Ruang kerja…",
   "session.new.git.none": "Tiada Git",
   "session.new.lastModified": "Terakhir diubah suai",
   "session.header.search.placeholder": "Cari {{project}}",

@@ -777,7 +777,7 @@ export const dict: Record<string, string> = {
   "session.new.workspace.runIn": "ནང་ལཱ་ཡུན་གཡོག་བཀོལ།",
   "session.new.workspace.triggerLocal": "ས་གནས་ཀྱི",
   "session.new.workspace.local": "ས་གནས་ཀྱི་མཛོད་ཁང་།",
-  "session.new.workspace.existing": "Git worktree གི་སྣོད་ཐོ་ཚུ",
+  "session.new.workspace.existing": "ལཱ་གི་ས་སྒོ...",
   "session.new.git.none": "མེད། Git།",
   "session.new.lastModified": "མཐའ་མའི་བཟོ་བཅོས་འབད་ཡོདཔ།",
   "session.header.search.placeholder": "འཚོལ་ཞིབ་ {{project}}།",

@@ -764,7 +764,7 @@ export const dict = {
   "session.new.workspace.runIn": "Sessiýany işlediň",
   "session.new.workspace.triggerLocal": "Localerli",
   "session.new.workspace.local": "Localerli ammar",
-  "session.new.workspace.existing": "Git worktree kataloglary",
+  "session.new.workspace.existing": "Workspace…",
   "session.new.git.none": "Git ýok",
   "session.new.lastModified": "Soňky gezek üýtgedildi",
   "session.header.search.placeholder": "{{project}} gözläň",

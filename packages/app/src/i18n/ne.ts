@@ -766,7 +766,7 @@ export const dict: Record<string, string> = {
   "session.new.workspace.runIn": "मा सत्र चलाउनुहोस्",
   "session.new.workspace.triggerLocal": "स्थानीय",
   "session.new.workspace.local": "स्थानीय भण्डार",
-  "session.new.workspace.existing": "Git वर्कट्री निर्देशिकाहरू",
+  "session.new.workspace.existing": "कार्यस्थल…",
   "session.new.git.none": "छैन Git",
   "session.new.lastModified": "पछिल्लो पटक परिमार्जन गरिएको",
   "session.header.search.placeholder": "{{project}} खोज्नुहोस्",

@@ -770,7 +770,7 @@ export const dict = {
   "session.new.workspace.runIn": "Сессийг ажиллуулах",
   "session.new.workspace.triggerLocal": "Орон нутгийн",
   "session.new.workspace.local": "Орон нутгийн хадгалах газар",
-  "session.new.workspace.existing": "Git worktree лавлахууд",
+  "session.new.workspace.existing": "Ажлын талбар…",
   "session.new.git.none": "Үгүй Git",
   "session.new.lastModified": "Сүүлд өөрчилсөн",
   "session.header.search.placeholder": "Хайх {{project}}",

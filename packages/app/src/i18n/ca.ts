@@ -773,7 +773,7 @@ export const dict = {
   "session.new.workspace.runIn": "Executeu la sessió",
   "session.new.workspace.triggerLocal": "Local",
   "session.new.workspace.local": "Repositori local",
-  "session.new.workspace.existing": "Directoris dels arbres de treball",
+  "session.new.workspace.existing": "Espai de treball…",
   "session.new.git.none": "Sense Git",
   "session.new.lastModified": "Última modificació",
   "session.header.search.placeholder": "Cerca {{project}}",

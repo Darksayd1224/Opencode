@@ -769,7 +769,7 @@ export const dict = {
   "session.new.workspace.runIn": "Kör sessionen i",
   "session.new.workspace.triggerLocal": "Lokal",
   "session.new.workspace.local": "Lokalt arkiv",
-  "session.new.workspace.existing": "Worktree-kataloger",
+  "session.new.workspace.existing": "Arbetsyta...",
   "session.new.git.none": "Ingen Git",
   "session.new.lastModified": "Senast ändrad",
   "session.header.search.placeholder": "Sök {{project}}",

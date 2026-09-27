@@ -776,7 +776,7 @@ export const dict = {
   "session.new.workspace.runIn": "سیشن یہاں چلائیں",
   "session.new.workspace.triggerLocal": "مقامی",
   "session.new.workspace.local": "مقامی ذخیرہ",
-  "session.new.workspace.existing": "ورک ٹری ڈائریکٹریز",
+  "session.new.workspace.existing": "ورک اسپیس…",
   "session.new.git.none": "کوئی Git نہیں۔",
   "session.new.lastModified": "آخری بار ترمیم کی گئی۔",
   "session.header.search.placeholder": "{{project}} تلاش کریں۔",

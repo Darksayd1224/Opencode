@@ -800,7 +800,7 @@ export const dict = {
   "session.new.workspace.runIn": "เรียกใช้เซสชันใน",
   "session.new.workspace.triggerLocal": "ในเครื่อง",
   "session.new.workspace.local": "รีโพซิทอรีในเครื่อง",
-  "session.new.workspace.existing": "ไดเรกทอรี worktree",
+  "session.new.workspace.existing": "พื้นที่ทำงาน…",
   "session.new.git.none": "ไม่มี Git",
   "session.new.lastModified": "แก้ไขล่าสุด",
 

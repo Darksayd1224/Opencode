@@ -767,7 +767,7 @@ export const dict = {
   "session.new.workspace.runIn": "Иҷлосия дар",
   "session.new.workspace.triggerLocal": "маҳаллӣ",
   "session.new.workspace.local": "Анбори маҳаллӣ",
-  "session.new.workspace.existing": "Директорияҳои Git worktree",
+  "session.new.workspace.existing": "Фазои корӣ…",
   "session.new.git.none": "Не Git",
   "session.new.lastModified": "Охирин тағир дода шудааст",
   "session.header.search.placeholder": "Ҷустуҷӯ {{project}}",

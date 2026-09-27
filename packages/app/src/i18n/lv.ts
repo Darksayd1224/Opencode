@@ -769,7 +769,7 @@ export const dict = {
   "session.new.workspace.runIn": "Palaist sesiju iekš",
   "session.new.workspace.triggerLocal": "Lokāli",
   "session.new.workspace.local": "Lokālais repozitorijs",
-  "session.new.workspace.existing": "Darba koku direktoriji",
+  "session.new.workspace.existing": "Darbtelpa…",
   "session.new.git.none": "Nav Git",
   "session.new.lastModified": "Pēdējoreiz mainīts",
   "session.header.search.placeholder": "Meklēt {{project}}",

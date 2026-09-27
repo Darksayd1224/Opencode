@@ -755,7 +755,7 @@ export const dict = {
   "session.new.workspace.runIn": "Executar sessão em",
   "session.new.workspace.triggerLocal": "Local",
   "session.new.workspace.local": "Repositório local",
-  "session.new.workspace.existing": "Diretórios de worktrees",
+  "session.new.workspace.existing": "Espaço de trabalho…",
   "session.new.git.none": "Sem Git",
   "session.new.lastModified": "Última modificação",
   "session.header.search.placeholder": "Buscar {{project}}",

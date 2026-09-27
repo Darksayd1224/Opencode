@@ -761,7 +761,7 @@ export const dict = {
   "session.new.workspace.runIn": "ដំណើរការសម័យក្នុង",
   "session.new.workspace.triggerLocal": "ក្នុងស្រុក",
   "session.new.workspace.local": "ឃ្លាំងមូលដ្ឋាន",
-  "session.new.workspace.existing": "ថត Git worktree",
+  "session.new.workspace.existing": "កន្លែងធ្វើការ…",
   "session.new.git.none": "គ្មាន Git",
   "session.new.lastModified": "កែប្រែចុងក្រោយ",
   "session.header.search.placeholder": "ស្វែងរក {{project}}",

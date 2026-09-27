@@ -843,7 +843,7 @@ export const dict = {
   "session.new.workspace.runIn": "Запустити сесію в",
   "session.new.workspace.triggerLocal": "Локально",
   "session.new.workspace.local": "Локальний репозиторій",
-  "session.new.workspace.existing": "Каталоги робочих дерев",
+  "session.new.workspace.existing": "Робоча область…",
   "session.new.git.none": "Немає Git",
   "session.new.lastModified": "Востаннє змінено",
 

@@ -764,7 +764,7 @@ export const dict = {
   "session.new.workspace.runIn": "სესიის გაშვება",
   "session.new.workspace.triggerLocal": "ადგილობრივი",
   "session.new.workspace.local": "ადგილობრივი საცავი",
-  "session.new.workspace.existing": "სამუშაო ხეების საქაღალდეები",
+  "session.new.workspace.existing": "სამუშაო სივრცე…",
   "session.new.git.none": "Git-ის გარეშე",
   "session.new.lastModified": "ბოლო ცვლილება",
   "session.header.search.placeholder": "ძებნა {{project}}",

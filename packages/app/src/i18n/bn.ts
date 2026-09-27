@@ -764,7 +764,7 @@ export const dict: Record<string, string> = {
   "session.new.workspace.runIn": "সেশন চালান",
   "session.new.workspace.triggerLocal": "স্থানীয়",
   "session.new.workspace.local": "স্থানীয় সংগ্রহস্থল",
-  "session.new.workspace.existing": "ওয়ার্কট্রি ডিরেক্টরি",
+  "session.new.workspace.existing": "ওয়ার্কস্পেস…",
   "session.new.git.none": "না Git",
   "session.new.lastModified": "সর্বশেষ সংশোধন করা হয়েছে",
   "session.header.search.placeholder": "অনুসন্ধান করুন {{project}}",

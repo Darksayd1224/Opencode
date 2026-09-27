@@ -769,7 +769,7 @@ export const dict = {
   "session.new.workspace.runIn": "Rulează sesiunea în",
   "session.new.workspace.triggerLocal": "Local",
   "session.new.workspace.local": "Depozit local",
-  "session.new.workspace.existing": "Directoare worktree",
+  "session.new.workspace.existing": "Spațiu de lucru…",
   "session.new.git.none": "Fără Git",
   "session.new.lastModified": "Ultima modificare",
   "session.header.search.placeholder": "Caută în {{project}}",

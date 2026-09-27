@@ -732,7 +732,7 @@ export const dict = {
   "session.new.workspace.runIn": "Run session in",
   "session.new.workspace.triggerLocal": "Local",
   "session.new.workspace.local": "Local repository",
-  "session.new.workspace.existing": "Worktree Directories",
+  "session.new.workspace.existing": "Workspace…",
   "session.new.git.none": "No Git",
   "session.new.lastModified": "Last modified",
 

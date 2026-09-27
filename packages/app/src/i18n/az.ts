@@ -774,7 +774,7 @@ export const dict = {
   "session.new.workspace.runIn": "Sessiyanı burada işə sal",
   "session.new.workspace.triggerLocal": "Yerli",
   "session.new.workspace.local": "Yerli depo",
-  "session.new.workspace.existing": "Worktree qovluqları",
+  "session.new.workspace.existing": "İş sahəsi…",
   "session.new.git.none": "Git yoxdur",
   "session.new.lastModified": "Son dəyişiklik",
   "session.header.search.placeholder": "{{project}} axtar",

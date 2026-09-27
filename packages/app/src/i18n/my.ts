@@ -772,7 +772,7 @@ export const dict = {
   "session.new.workspace.runIn": "စက်ရှင်ကို ဖွင့်ပါ။",
   "session.new.workspace.triggerLocal": "ပြည်တွင်း",
   "session.new.workspace.local": "စက်တွင်းသိုလှောင်မှု",
-  "session.new.workspace.existing": "Git worktree လမ်းညွှန်များ",
+  "session.new.workspace.existing": "အလုပ်နေရာ…",
   "session.new.git.none": "Git မရှိပါ။",
   "session.new.lastModified": "နောက်ဆုံးမွမ်းမံထားသည်။",
   "session.header.search.placeholder": "{{project}} ကိုရှာပါ။",

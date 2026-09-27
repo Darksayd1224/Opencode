@@ -813,7 +813,7 @@ export const dict = {
   "session.new.workspace.runIn": "Oturumu şurada çalıştır",
   "session.new.workspace.triggerLocal": "Yerel",
   "session.new.workspace.local": "Yerel depo",
-  "session.new.workspace.existing": "Çalışma ağacı dizinleri",
+  "session.new.workspace.existing": "Çalışma alanı…",
   "session.new.git.none": "Git yok",
   "session.new.lastModified": "Son değişiklik",
 

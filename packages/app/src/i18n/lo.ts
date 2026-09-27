@@ -759,7 +759,7 @@ export const dict = {
   "session.new.workspace.runIn": "ແລ່ນເຊສຊັນໃນ",
   "session.new.workspace.triggerLocal": "ທ້ອງຖິ່ນ",
   "session.new.workspace.local": "ພື້ນທີ່ເກັບຂໍ້ມູນທ້ອງຖິ່ນ",
-  "session.new.workspace.existing": "ໄດເລກະທໍລີ Git worktree",
+  "session.new.workspace.existing": "ພື້ນທີ່ເຮັດວຽກ...",
   "session.new.git.none": "ບໍ່ມີ Git",
   "session.new.lastModified": "ດັດແກ້ຫຼ້າສຸດ",
   "session.header.search.placeholder": "ຄົ້ນຫາ {{project}}",

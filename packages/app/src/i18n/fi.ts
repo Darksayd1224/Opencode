@@ -662,7 +662,7 @@ export const dict = {
   "session.new.workspace.runIn": "Suorita istunto kohteessa",
   "session.new.workspace.triggerLocal": "Paikallinen",
   "session.new.workspace.local": "Paikallinen säilö",
-  "session.new.workspace.existing": "Työpuuhakemistot",
+  "session.new.workspace.existing": "Työtila…",
   "session.new.git.none": "Ei Gitiä",
   "session.new.lastModified": "Viimeksi muokattu",
   "session.header.search.placeholder": "Hae projektista {{project}}",
