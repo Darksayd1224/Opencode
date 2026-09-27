@@ -3,7 +3,7 @@ import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { WordmarkV2 } from "@opencode-ai/ui/v2/wordmark-v2"
-import { Show, createEffect, createMemo, createSignal, onCleanup, onMount, type Accessor } from "solid-js"
+import { Show, createMemo, createSignal, type Accessor } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Portal } from "solid-js/web"
 import createPresence from "solid-presence"
@@ -31,42 +31,6 @@ export function NewSessionView(props: {
   project: PromptProjectController
   workspace: NewSessionWorkspaceController
 }) {
-  let selectorBar: HTMLDivElement | undefined
-  let projectTrigger: HTMLButtonElement | undefined
-  let workspaceTrigger: HTMLButtonElement | undefined
-  const [selectorWidths, setSelectorWidths] = createSignal<{ project: number; workspace: number }>()
-  const measureSelectorWidths = () => {
-    if (!selectorBar || !projectTrigger || !workspaceTrigger) return
-    const available = selectorBar.clientWidth
-    const half = available / 2
-    const project = projectTrigger.scrollWidth
-    const workspace = workspaceTrigger.scrollWidth
-    if (project <= half && workspace > half) {
-      setSelectorWidths({ project, workspace: available - project })
-      return
-    }
-    if (workspace <= half && project > half) {
-      setSelectorWidths({ project: available - workspace, workspace })
-      return
-    }
-    setSelectorWidths({ project: half, workspace: half })
-  }
-
-  onMount(() => {
-    const observer = new ResizeObserver(measureSelectorWidths)
-    if (selectorBar) observer.observe(selectorBar)
-    onCleanup(() => observer.disconnect())
-    requestAnimationFrame(measureSelectorWidths)
-  })
-
-  createEffect(() => {
-    props.project.selected()
-    props.workspace.selection.value()
-    props.workspace.project.branch()
-    props.workspace.project.workspaces()
-    queueMicrotask(measureSelectorWidths)
-  })
-
   return (
     <div class="@container relative flex flex-col min-h-0 h-full flex-1">
       <div
@@ -82,29 +46,26 @@ export function NewSessionView(props: {
                 <PromptProjectAddButton controller={props.project} />
               </Show>
               <Show when={props.project.selected()}>
-                <div ref={selectorBar} class="flex w-full min-h-7 min-w-0 flex-col items-center justify-center gap-0 text-v2-text-text-faint sm:flex-row">
-                  <PromptProjectSelector
-                    controller={props.project}
-                    placement="bottom"
-                    onTrigger={(element) => (projectTrigger = element)}
-                    style={selectorWidths() ? `width:${selectorWidths()!.project}px` : undefined}
-                  />
+                <div class="flex w-full min-h-7 min-w-0 flex-col items-center justify-center gap-0 text-v2-text-text-faint sm:flex-row">
+                  <div class="flex min-w-0 flex-1 basis-1/2">
+                    <PromptProjectSelector controller={props.project} placement="bottom" />
+                  </div>
                   <Show
                     when={props.workspace.bar.visible()}
                     fallback={
                       <PromptGitStatus branch={props.workspace.bar.branch()} noGit={!props.workspace.project.git()} />
                     }
                   >
-                    <PromptWorkspaceSelector
-                      value={props.workspace.selection.value()}
-                      projectRoot={props.workspace.project.root()}
-                      projectBranch={props.workspace.project.branch()}
-                      workspaces={props.workspace.project.workspaces()}
-                      onChange={props.workspace.selection.set}
-                      onDone={props.input.restoreFocus}
-                      onTrigger={(element) => (workspaceTrigger = element)}
-                      style={selectorWidths() ? `width:${selectorWidths()!.workspace}px` : undefined}
-                    />
+                    <div class="flex min-w-0 flex-1 basis-1/2">
+                      <PromptWorkspaceSelector
+                        value={props.workspace.selection.value()}
+                        projectRoot={props.workspace.project.root()}
+                        projectBranch={props.workspace.project.branch()}
+                        workspaces={props.workspace.project.workspaces()}
+                        onChange={props.workspace.selection.set}
+                        onDone={props.input.restoreFocus}
+                      />
+                    </div>
                   </Show>
                 </div>
               </Show>
