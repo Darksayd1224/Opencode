@@ -57,7 +57,9 @@ export async function ensure(options: EnsureOptions = {}): Promise<Endpoint> {
           info: registration.info,
           count: timeouts !== undefined && same(timeouts.info, registration.info) ? timeouts.count + 1 : 1,
         }
-        if (timeouts.count >= 3) {
+        // Require sustained unresponsiveness before evicting: transient Windows probe stalls must
+        // reconnect, never kill a healthy service and abort its sessions.
+        if (timeouts.count >= 5) {
           announce("missing")
           console.warn("Background service is unresponsive; recovery cannot preserve persistent terminals")
           await PtyHandoff.clear(options.file ?? fallback())
@@ -87,7 +89,10 @@ export async function ensure(options: EnsureOptions = {}): Promise<Endpoint> {
       } else {
         const failed = pool.reap()
         if (failed !== undefined) throw failed
-        if (pool.shouldRecruit(registration.info !== undefined)) {
+        // Keep one candidate plus one lock probe so a pre-lock stall cannot block recovery. While health
+        // probes against the registered service keep timing out, wait for eviction instead: a contender
+        // that registers first would take over and leak the hung process terminate() no longer matches.
+        if (timeouts === undefined && pool.shouldRecruit(registration.info !== undefined)) {
           announce("missing")
           pool.add(await spawnContender())
         }

@@ -212,7 +212,7 @@ test("evicts an unresponsive registered service before starting its replacement"
   const replacement = await Bun.file(registration).json()
   fixture.track(replacement.pid)
 
-  expect((await Bun.file(registration + ".requests").text()).trim().split("\n")).toHaveLength(3)
+  expect((await Bun.file(registration + ".requests").text()).trim().split("\n")).toHaveLength(5)
   expect(await existing.exited).toBe(0)
   expect(replacement.pid).not.toBe(original.pid)
   expect(endpoint.url).toBe(replacement.url)
@@ -270,6 +270,27 @@ test("stops the registered service even when terminal handoff fails", async () =
   expect(await Bun.file(registration + ".signal").text()).toBe("SIGTERM")
   expect(await Bun.file(registration).exists()).toBe(false)
   expect((await Bun.file(registration + ".pty-handoff").json()).handoff).toBeNull()
+})
+
+test("keeps a registered service that recovers after transient probe stalls", async () => {
+  await using fixture = await serviceFixture()
+  const registration = fixture.registration
+  const existing = fixture.spawn("flaky", "3")
+  await fixture.waitForFile()
+  const original = await Bun.file(registration).json()
+
+  const endpoint = await ensure({
+    file: registration,
+    version: "test",
+    command: fixture.command("delayed", "10"),
+  })
+  const current = await Bun.file(registration).json()
+  fixture.track(current.pid)
+
+  expect((await Bun.file(registration + ".requests").text()).trim().split("\n")).toHaveLength(4)
+  expect(existing.exitCode).toBe(null)
+  expect(current.pid).toBe(original.pid)
+  expect(endpoint.url).toBe(original.url)
 })
 
 test("signals the registered service process", async () => {
