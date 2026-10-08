@@ -61,6 +61,33 @@ The output of the command is added to the conversation as a tool result.
 
 ---
 
+## Clickable elements
+
+These parts of the screen act when you click them. Where a keybind or slash command does the same, the click runs it:
+
+| Element | Where | Action |
+| --- | --- | --- |
+| Agent name | Below the prompt | Opens the agent picker (`/agents`) |
+| Model and provider | Below the prompt | Opens the model picker (`/models`) |
+| Variant | Below the prompt, when one is selected | Opens the variant picker (`/variants`) |
+| `tab agents` | Below the prompt | Switches to the next agent, like `tab` |
+| `ctrl+p commands` | Below the prompt | Opens the command palette |
+| `esc interrupt` | Below the prompt, while the agent works | Like pressing `esc`: the first click asks for a second, and a second click within 5 seconds interrupts the agent |
+| Token, context and cost usage | Below the prompt, and the Context section of the session sidebar | Opens the status dialog (`/status`) |
+| Directory | Below the prompt, the session sidebar footer, the home screen footer | Copies the directory's path |
+| Model in a message footer | After `▣` and the agent below an answer | Opens the model picker with the model that turn ran on highlighted |
+| Session title | Top of the session sidebar | Renames the session (`/rename`) |
+| Session or message ID (`ses_...`, `msg_...`) | The sidebar, and text the agent or a tool wrote | Copies the ID |
+| An MCP server | MCP section of the session sidebar | Connects or disconnects that server, as `/mcps` does, without opening the dialog. The dot shows `⋯` until the server answers. |
+| A modified file | Modified Files section of the session sidebar | Opens the diff viewer (`/diff`) at that file |
+| A todo | Todo section of the session sidebar | Copies the todo and adds it to the end of the prompt |
+| MCP count and `/status` | Home screen footer | Opens the status dialog (`/status`) |
+| Connect provider | "Getting started" box in the session sidebar | Opens the provider list (`/connect`) |
+
+A click counts only when the mouse is pressed and released on the same cell. Dragging across any of these selects and copies its text instead, as it does elsewhere, and nothing happens on hover. A click on an ID inside a message or tool call copies the ID instead of opening the message or tool around it.
+
+---
+
 ## Commands
 
 When using the OpenCode TUI, you can type `/` followed by a command name to quickly execute actions. For example:

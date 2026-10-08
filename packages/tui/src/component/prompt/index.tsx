@@ -59,6 +59,7 @@ import { usePromptWorkspace } from "./workspace"
 import { usePromptMove } from "./move"
 import { readLocalAttachment } from "./local-attachment"
 import { useLocation } from "../../context/location"
+import { copyText, onClick } from "../../ui/click"
 
 registerOpencodeSpinner()
 
@@ -1515,7 +1516,10 @@ export function Prompt(props: PromptProps) {
                 <Show when={local.agent.current()} fallback={<box height={1} />}>
                   {(agent) => (
                     <>
-                      <text fg={fadeColor(highlight(), agentMetaAlpha())}>
+                      <text
+                        fg={fadeColor(highlight(), agentMetaAlpha())}
+                        {...onClick(() => keymap.dispatchCommand("agent.list"))}
+                      >
                         {store.mode === "shell" ? "Shell" : Locale.titlecase(agent().name)}
                       </text>
                       <Show when={store.mode === "normal" && local.permission.mode === "auto"}>
@@ -1524,16 +1528,18 @@ export function Prompt(props: PromptProps) {
                       <Show when={store.mode === "normal"}>
                         <box flexDirection="row" gap={1}>
                           <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>·</text>
-                          <text
-                            flexShrink={0}
-                            fg={fadeColor(leader() ? theme.textMuted : theme.text, modelMetaAlpha())}
-                          >
-                            {local.model.parsed().model}
-                          </text>
-                          <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>{currentProviderLabel()}</text>
+                          <box flexDirection="row" gap={1} {...onClick(() => keymap.dispatchCommand("model.list"))}>
+                            <text
+                              flexShrink={0}
+                              fg={fadeColor(leader() ? theme.textMuted : theme.text, modelMetaAlpha())}
+                            >
+                              {local.model.parsed().model}
+                            </text>
+                            <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>{currentProviderLabel()}</text>
+                          </box>
                           <Show when={showVariant()}>
                             <text fg={fadeColor(theme.textMuted, variantMetaAlpha())}>·</text>
-                            <text>
+                            <text {...onClick(() => keymap.dispatchCommand("variant.list"))}>
                               <span style={{ fg: fadeColor(theme.warning, variantMetaAlpha()), bold: true }}>
                                 {local.model.variant.current()}
                               </span>
@@ -1653,7 +1659,10 @@ export function Prompt(props: PromptProps) {
                     })()}
                   </box>
                 </box>
-                <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
+                <text
+                  fg={store.interrupt > 0 ? theme.primary : theme.text}
+                  {...onClick(() => keymap.dispatchCommand("session.interrupt"))}
+                >
                   esc{" "}
                   <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
                     {store.interrupt > 0 ? "again to interrupt" : "interrupt"}
@@ -1715,7 +1724,12 @@ export function Prompt(props: PromptProps) {
               {props.hint ?? (
                 <Show when={props.sessionID} fallback={<text />}>
                   <box marginLeft={1}>
-                    <text fg={theme.textMuted}>{location()?.directory ?? paths.cwd}</text>
+                    <text
+                      fg={theme.textMuted}
+                      {...onClick(() => copyText(clipboard, toast.show, location()?.directory ?? paths.cwd))}
+                    >
+                      {location()?.directory ?? paths.cwd}
+                    </text>
                   </box>
                 </Show>
               )}
@@ -1733,18 +1747,22 @@ export function Prompt(props: PromptProps) {
                   <Switch>
                     <Match when={usage()}>
                       {(item) => (
-                        <text fg={theme.textMuted} wrapMode="none">
+                        <text
+                          fg={theme.textMuted}
+                          wrapMode="none"
+                          {...onClick(() => keymap.dispatchCommand("opencode.status"))}
+                        >
                           {[item().context, item().cost].filter(Boolean).join(" · ")}
                         </text>
                       )}
                     </Match>
                     <Match when={true}>
-                      <text fg={theme.text}>
+                      <text fg={theme.text} {...onClick(() => keymap.dispatchCommand("agent.cycle"))}>
                         {agentShortcut()} <span style={{ fg: theme.textMuted }}>agents</span>
                       </text>
                     </Match>
                   </Switch>
-                  <text fg={theme.text}>
+                  <text fg={theme.text} {...onClick(() => keymap.dispatchCommand("command.palette.show"))}>
                     {paletteShortcut()} <span style={{ fg: theme.textMuted }}>commands</span>
                   </text>
                 </Match>
