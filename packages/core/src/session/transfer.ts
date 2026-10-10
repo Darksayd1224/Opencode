@@ -3,7 +3,7 @@ export * as SessionTransfer from "./transfer.js"
 import { SessionTransfer } from "@opencode/schema/session-transfer"
 import { Tool } from "@opencode/schema/tool"
 import { Skill } from "@opencode/schema/skill"
-import { eq } from "drizzle-orm"
+import { eq, inArray } from "drizzle-orm"
 import { Clock, Context, DateTime, Effect, Layer, Schema } from "effect"
 import { map } from "effect/Array"
 import path from "path"
@@ -30,6 +30,11 @@ export class ImportConflictError extends Schema.TaggedError<ImportConflictError>
   { sessionID: Session.ID },
 ) {}
 
+export class MessageConflictError extends Schema.TaggedError<MessageConflictError>()(
+  "SessionTransfer.MessageConflictError",
+  { sessionID: Session.ID },
+) {}
+
 export interface Interface {
   readonly export: (input: {
     sessionID: Session.ID
@@ -38,7 +43,7 @@ export interface Interface {
   readonly import: (input: {
     data: Data
     location: Location.Ref
-  }) => Effect.Effect<Session.Info, ImportConflictError | Session.NotFoundError>
+  }) => Effect.Effect<Session.Info, ImportConflictError | MessageConflictError | Session.NotFoundError>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/SessionTransfer") {}
@@ -86,6 +91,16 @@ const layer = Layer.effect(
             data,
           }
         })
+        if (messages.length > 0) {
+          const conflict = yield* db
+            .select({ id: SessionMessageTable.id })
+            .from(SessionMessageTable)
+            .where(inArray(SessionMessageTable.id, messages.map((message) => message.id)))
+            .limit(1)
+            .get()
+            .pipe(Effect.orDie)
+          if (conflict) return yield* new MessageConflictError({ sessionID })
+        }
         yield* bus
           .publish(
             SessionEvent.Created,

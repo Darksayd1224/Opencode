@@ -70,3 +70,30 @@ it.live("preserves imported parentID through HTTP import, read, and parent filte
     }).pipe(Effect.scoped),
   )
 })
+
+it.live("rejects an import whose message IDs already exist with a conflict", () =>
+  Effect.gen(function* () {
+    const request = yield* setup
+    const template = Schema.decodeUnknownSync(SessionResponse)(yield* request("/api/session", {}))
+    const message = {
+      id: "msg_import_conflict_fixture",
+      type: "user",
+      text: "Hello",
+      time: { created: 1_700_000_000_000 },
+    }
+    const first = Session.ID.create()
+    yield* request("/api/experimental/session/import", { info: { ...template.data, id: first }, messages: [message] })
+
+    const second = Session.ID.create()
+    const conflict = yield* request(
+      "/api/experimental/session/import",
+      { info: { ...template.data, id: second }, messages: [message] },
+      409,
+    )
+    expect(conflict).toMatchObject({ _tag: "ConflictError", resource: second })
+    // The conflicting import must not create the destination session.
+    expect(yield* request(`/api/session/${second}`, undefined, 404)).toMatchObject({
+      _tag: "SessionNotFoundError",
+    })
+  }).pipe(Effect.scoped),
+)
