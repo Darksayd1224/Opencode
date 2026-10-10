@@ -13,6 +13,7 @@
     },
   },
   "mcp": {},
+  "plugin": ["../packages/concept-tagger"],
   "tools": {
     "github-triage": false,
     "github-pr-search": false,
