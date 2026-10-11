@@ -79,6 +79,17 @@ const openaiChat: Protocol = (_, support) => {
   return efforts(support.values ?? EFFORTS, (effort) => ({ settings: { reasoningEffort: effort } }))
 }
 
+// Vertex MaaS models switch thinking through the chat template. DeepSeek names the flag `thinking`; the
+// others (GLM, Gemma) use `enable_thinking`.
+const vertexChat: Protocol = (model, support) => {
+  if (support.type !== "toggle") return openaiChat(model, support)
+  const key = modelID(model).toLowerCase().includes("deepseek") ? "thinking" : "enable_thinking"
+  return toggle(
+    { body: { chat_template_kwargs: { [key]: false } } },
+    { body: { chat_template_kwargs: { [key]: true } } },
+  )
+}
+
 const openaiResponses: Protocol = (_, support) => {
   if (support.type !== "effort") return []
   return efforts(support.values ?? ["none", "minimal", ...EFFORTS, "xhigh"], responsesEffort)
@@ -526,6 +537,43 @@ const sapAICore: Protocol = (model, support) => {
   }
 }
 
+// gitlab-ai-provider reads `providerOptions.gitlab.thinking` (Anthropic) and
+// `providerOptions.gitlab.reasoningEffort` (OpenAI Chat and Responses). Its adaptive
+// thinking config carries the effort inline and always requests summarized display.
+const gitlabAnthropic: Protocol = (model, support) => {
+  const info = claudeInfo(model)
+  const disabled: Overlay = { settings: { thinking: { type: "disabled" } } }
+  const adaptive = (effort: string): Overlay => ({ settings: { thinking: { type: "adaptive", effort } } })
+  switch (support.type) {
+    case "effort": {
+      if (info.manual) return gitlabAnthropic(model, { type: "budget_tokens", min: 1024 })
+      const defaults = info.major === 4 && info.minor === 6 ? [...EFFORTS, "max"] : [...EFFORTS, "xhigh", "max"]
+      return efforts(support.values ?? defaults, (effort) => (effort === "none" ? disabled : adaptive(effort)))
+    }
+    case "toggle": {
+      if (info.always) return []
+      const thinking = info.manual ? manualThinking(model) : adaptive("high")
+      if (!thinking) return []
+      return toggle(disabled, thinking)
+    }
+    case "budget_tokens":
+      return budgets(
+        model,
+        support,
+        (tokens) => ({ settings: { thinking: { type: "enabled", budgetTokens: tokens } } }),
+        ANTHROPIC_OUTPUT_TOKEN_MAX,
+      )
+  }
+}
+
+const gitlab: Protocol = (model, support) => {
+  const id = modelID(model).toLowerCase()
+  if (id.startsWith("duo-workflow")) return []
+  if (claudeInfo(model).family) return gitlabAnthropic(model, support)
+  if (id.includes("gpt") || id.includes("codex")) return openaiChat(model, support)
+  return []
+}
+
 const PROTOCOLS: Readonly<Record<string, Protocol>> = {
   "@opencode/ai/providers/openai": openaiResponses,
   "@opencode/ai/providers/azure/responses": openaiResponses,
@@ -539,7 +587,7 @@ const PROTOCOLS: Readonly<Record<string, Protocol>> = {
 
   "@opencode/ai/providers/openai-compatible": openaiCompatible,
   "@opencode/ai/providers/azure/chat": openaiChat,
-  "@opencode/ai/providers/google-vertex/chat": openaiChat,
+  "@opencode/ai/providers/google-vertex/chat": vertexChat,
   "@opencode/ai/providers/alibaba/chat": alibabaChat,
   "@opencode/ai/providers/baseten": basetenChat,
   "@opencode/ai/providers/cerebras": openaiChat,
@@ -562,6 +610,7 @@ const PROTOCOLS: Readonly<Record<string, Protocol>> = {
 
   "@opencode/ai/providers/anthropic": anthropicMessages,
   "@opencode/ai/providers/google-vertex/messages": anthropicMessages,
+  "@opencode/ai/providers/google-vertex/mistral": openaiChat,
   "@opencode/ai/providers/alibaba/messages": alibabaMessages,
   "@opencode/ai/providers/meta/messages": anthropicMessages,
   "@opencode/ai/providers/minimax/messages": minimaxMessages,
@@ -580,4 +629,5 @@ const PROTOCOLS: Readonly<Record<string, Protocol>> = {
   "@opencode/ai/providers/vercel-ai-gateway": vercelGateway,
   [Provider.aisdk("@ai-sdk/gateway")]: vercelGateway,
   [Provider.aisdk("@jerome-benoit/sap-ai-provider-v2")]: sapAICore,
+  [Provider.aisdk("gitlab-ai-provider")]: gitlab,
 }

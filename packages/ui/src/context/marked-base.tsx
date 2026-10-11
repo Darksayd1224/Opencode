@@ -3,10 +3,10 @@ import { Marked } from "marked"
 export function createMarkdownBase() {
   return new Marked({
     renderer: {
-      link({ href, title, text }) {
+      link({ href, title, tokens }) {
         const titleAttr = title ? ` title="${title}"` : ""
 
-        return `<a href="${href}"${titleAttr} class="external-link" target="_blank" rel="noopener noreferrer">${text}</a>`
+        return `<a href="${href}"${titleAttr} class="external-link" target="_blank" rel="noopener noreferrer">${this.parser.parseInline(tokens)}</a>`
       },
     },
   })
@@ -16,7 +16,8 @@ let smallParser: Marked | undefined
 
 export function parseSmallMarkdown(text: string) {
   // Any possible KaTeX delimiter stays on the worker, including escaped ones.
-  if (text.length > 1024 || text.includes("\\(") || text.includes("$$")) return
+  // Dollar math needs a pair, so a lone price such as `$5` can stay on this path.
+  if (text.length > 1024 || text.includes("\\(") || text.indexOf("$") !== text.lastIndexOf("$")) return
 
   // Ordinary prose does not need the block/inline lexer's cold regular expressions.
   // Keep every possible Markdown construct, autolink, and hard break on that lexer.
