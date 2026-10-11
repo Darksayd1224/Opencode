@@ -70,8 +70,10 @@ export function NewSessionView(props: {
                 <PromptProjectAddButton controller={props.project} />
               </Show>
               <Show when={props.project.selected()}>
-                <div class="flex min-h-7 min-w-0 flex-row flex-wrap items-center justify-center gap-0 text-v2-text-text-faint">
-                  <PromptProjectSelector controller={props.project} placement="bottom" />
+                <div class="flex w-full min-h-7 min-w-0 flex-row flex-wrap items-center justify-center gap-0 text-v2-text-text-faint">
+                  <div class="flex min-w-0 flex-1 basis-1/2">
+                    <PromptProjectSelector controller={props.project} placement="bottom" />
+                  </div>
                   <Show
                     when={props.workspace.bar.visible()}
                     fallback={
@@ -82,19 +84,23 @@ export function NewSessionView(props: {
                       />
                     }
                   >
-                    <PromptWorkspaceSelector
-                      value={props.workspace.selection.value()}
-                      projectRoot={props.workspace.project.root()}
-                      workspaces={props.workspace.project.workspaces()}
-                      branches={props.workspace.project.branches()}
-                      branch={props.workspace.bar.branch()}
-                      onboarding={onboardingReady() && !onboarding.used}
-                      onChange={select}
-                      onCreate={props.workspace.selection.create}
-                      onSearch={props.workspace.project.searchBranches}
-                      onDone={props.composer.restoreFocus}
-                      onViewAll={props.workspace.project.openAll}
-                    />
+                    <div class="flex min-w-0 flex-1 basis-1/2">
+                      <PromptWorkspaceSelector
+                        value={props.workspace.selection.value()}
+                        projectRoot={props.workspace.project.root()}
+                        projectBranch={props.workspace.project.branch()}
+                        worktreeBranch={props.workspace.project.worktreeBranch}
+                        workspaces={props.workspace.project.workspaces()}
+                        branches={props.workspace.project.branches()}
+                        branch={props.workspace.bar.branch()}
+                        onboarding={onboardingReady() && !onboarding.used}
+                        onChange={select}
+                        onCreate={props.workspace.selection.create}
+                        onSearch={props.workspace.project.searchBranches}
+                        onDone={props.composer.restoreFocus}
+                        onViewAll={props.workspace.project.openAll}
+                      />
+                    </div>
                   </Show>
                 </div>
               </Show>
