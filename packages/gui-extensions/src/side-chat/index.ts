@@ -9,7 +9,7 @@ const Chats = Schema.Struct({
       id: Schema.String,
       // The number in the tab's title; the lowest one no open chat uses.
       ordinal: Schema.Number,
-      // The child session forked from the main one.
+      // The session forked from the main one.
       sessionID: Schema.String,
       // The last message the fork inherited; everything up to it stays out of the chat's transcript.
       base: Schema.String,

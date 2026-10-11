@@ -13,4 +13,10 @@ export default {
   "quote.subject": "side chat {{number}}",
   loading: "Loading side chat",
   "send.failed": "Couldn’t send that message",
+  "permission.title": "Allow {{action}}?",
+  "permission.once": "Allow once",
+  "permission.always": "Always allow",
+  "permission.reject": "Reject",
+  "form.title": "Waiting for an answer: {{title}}",
+  "form.skip": "Skip",
 }

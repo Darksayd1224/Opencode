@@ -34,9 +34,9 @@ test("forks isolated side chats into numbered tabs and deletes them when closed"
   const second = page.getByRole("tab", { name: "Side chat 2", exact: true })
   const mainID = sessions[0]!.id
 
-  await editor.press("Control+Shift+N")
+  await editor.press("Control+Alt+N")
   await expect(first).toHaveAttribute("data-selected", "")
-  expect(forks).toEqual([{ sessionID: mainID, forkID: "ses_mock_fork_1", body: { child: true } }])
+  expect(forks).toEqual([{ sessionID: mainID, forkID: "ses_mock_fork_1", body: {} }])
   // The inherited history stays out of the chat, and the main chat keeps its own.
   await expect(panel.getByText("Main question one")).toHaveCount(0)
   await expect(panel.getByText("Main question two")).toHaveCount(0)
@@ -48,7 +48,7 @@ test("forks isolated side chats into numbered tabs and deletes them when closed"
   expect(prompts).toEqual([{ sessionID: "ses_mock_fork_1", text: "Side question" }])
   await page.screenshot({ path: testInfo.outputPath("side-chat.png") })
 
-  await editor.press("Control+Shift+N")
+  await editor.press("Control+Alt+N")
   await expect(second).toHaveAttribute("data-selected", "")
   await expect(panel.getByText("Side question", { exact: true })).toHaveCount(0)
 
@@ -56,7 +56,7 @@ test("forks isolated side chats into numbered tabs and deletes them when closed"
   await first.click({ button: "middle" })
   await expect(first).toHaveCount(0)
   expect(removed).toEqual(["ses_mock_fork_1"])
-  await editor.press("Control+Shift+N")
+  await editor.press("Control+Alt+N")
   await expect(first).toHaveAttribute("data-selected", "")
   expect(forks.map((fork) => fork.forkID)).toEqual(["ses_mock_fork_1", "ses_mock_fork_2", "ses_mock_fork_3"])
 })
@@ -70,8 +70,37 @@ test("starts no side chat before the main chat has a message", async ({ page }) 
     onFork: (input) => forks.push(input.forkID),
   })
 
-  await editor.press("Control+Shift+N")
+  await editor.press("Control+Alt+N")
   await expect(page.getByText("Send a message in the main chat before starting a side chat")).toBeVisible()
   await expect(page.getByRole("tab", { name: "Side chat 1", exact: true })).toHaveCount(0)
   expect(forks).toEqual([])
+})
+
+test("answers a side chat's permission request in its own tab", async ({ page }) => {
+  const replies: { sessionID: string; permissionID: string; body: unknown }[] = []
+
+  const { editor } = await openSession(page, {
+    name: "SideChatPermission",
+    pageMessages: (sessionID) => ({
+      items: sessionID.startsWith("ses_mock_fork")
+        ? history.map((message) => ({ ...message, id: `${message.id}_${sessionID}` }))
+        : history,
+    }),
+    sessionPermissions: {
+      ses_mock_fork_1: [{ id: "per_side", sessionID: "ses_mock_fork_1", action: "edit", resources: ["src/side.ts"] }],
+    },
+    onPermissionReply: (input) => replies.push(input),
+  })
+
+  await editor.press("Control+Alt+N")
+  const panel = page.locator('[data-slot="session-side-chat-panel"]')
+  await expect(panel.getByText("Allow edit?")).toBeVisible()
+  await expect(panel.getByText("src/side.ts")).toBeVisible()
+  await panel.getByRole("button", { name: "Allow once", exact: true }).click()
+  await expect.poll(() => replies.length).toBe(1)
+  expect(replies[0]).toMatchObject({
+    sessionID: "ses_mock_fork_1",
+    permissionID: "per_side",
+    body: { decision: "once" },
+  })
 })

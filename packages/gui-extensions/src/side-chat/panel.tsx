@@ -1,4 +1,4 @@
-import { createMemo, onCleanup, onMount, Show } from "solid-js"
+import { createMemo, For, onCleanup, onMount, Show } from "solid-js"
 import { Button } from "@opencode/ui/button"
 import { Icon } from "@opencode/ui/icon"
 import { IconButton } from "@opencode/ui/icon-button"
@@ -33,8 +33,26 @@ export default function SideChatPanel(props: { chats: SideChatModel; session: Mo
   // Follows new output only while the reader is at the bottom.
   let pinned = true
 
+  // The session is not routed, so nothing else shows what it asks for: its permission requests and questions.
+  const permissions = () => {
+    const id = sessionID()
+
+    return (id && data().session.permission.list(id)) || []
+  }
+
+  const forms = () => {
+    const id = sessionID()
+
+    return (id && data().session.form.list(id)) || []
+  }
+
   createKeyed(sessionID, (id) => {
-    void Promise.all([data().session.message.sync(id), data().session.pending.sync(id)]).catch(() => undefined)
+    void Promise.all([
+      data().session.message.sync(id),
+      data().session.pending.sync(id),
+      data().session.permission.sync(id),
+      data().session.form.sync(id),
+    ]).catch(() => undefined)
   })
 
   const toBottom = () => {
@@ -110,6 +128,45 @@ export default function SideChatPanel(props: { chats: SideChatModel; session: Mo
       </div>
 
       <div class="flex shrink-0 flex-col gap-2 border-t border-v2-border-border-base p-3">
+        <For each={permissions()}>
+          {(request) => (
+            <div class="flex flex-col gap-2 rounded-lg border border-v2-border-border-base p-3" role="group">
+              <div class="text-13-medium text-text-strong">{ctx.t("permission.title", { action: request.action })}</div>
+              <div class="break-all text-12-regular text-text-weak">{request.resources.join(", ")}</div>
+              <div class="flex flex-wrap gap-2">
+                <Button size="small" onClick={() => props.chats.allow(props.session, props.id, request.id, "once")}>
+                  {ctx.t("permission.once")}
+                </Button>
+                <Button
+                  size="small"
+                  variant="outline"
+                  onClick={() => props.chats.allow(props.session, props.id, request.id, "always")}
+                >
+                  {ctx.t("permission.always")}
+                </Button>
+                <Button
+                  size="small"
+                  variant="ghost-muted"
+                  onClick={() => props.chats.allow(props.session, props.id, request.id, "reject")}
+                >
+                  {ctx.t("permission.reject")}
+                </Button>
+              </div>
+            </div>
+          )}
+        </For>
+        <For each={forms()}>
+          {(form) => (
+            <div class="flex items-center justify-between gap-2 rounded-lg border border-v2-border-border-base p-3">
+              <div class="min-w-0 truncate text-13-regular text-text-weak">
+                {ctx.t("form.title", { title: form.title })}
+              </div>
+              <Button size="small" variant="outline" onClick={() => props.chats.skip(props.session, props.id, form.id)}>
+                {ctx.t("form.skip")}
+              </Button>
+            </div>
+          )}
+        </For>
         <Textarea
           rows={2}
           value={props.chats.draft(props.id)}

@@ -1024,7 +1024,6 @@ export type SessionForked = {
     sessionID: SessionID
     parentID: SessionID
     boundary: SessionForkBoundary
-    child?: boolean
     instructions?: { [x: InstructionKey]: InstructionHash }
     instructionEntries?: InstructionEntrySnapshot
   }
@@ -4206,8 +4205,7 @@ export type SessionRemoveOutput = void
 
 export type SessionForkInput = {
   readonly sessionID: { readonly sessionID: string }["sessionID"]
-  readonly before?: { readonly before?: string | undefined; readonly child?: boolean | undefined }["before"]
-  readonly child?: { readonly before?: string | undefined; readonly child?: boolean | undefined }["child"]
+  readonly before?: { readonly before?: string | undefined }["before"]
 }
 
 export type SessionForkOutput = { data: SessionInfo }["data"]

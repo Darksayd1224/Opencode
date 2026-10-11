@@ -85,8 +85,8 @@ export interface MockServerConfig {
   onSession?: (sessionID: string) => void
   // Records DELETE /api/session/:id (204).
   onSessionRemove?: (sessionID: string) => void
-  // POST /api/session/:id/fork adds a session titled "<source title> (fork #n)", a child of the source when the request
-  // sets `child`. The hook receives it; serve the copied history from `pageMessages`.
+  // POST /api/session/:id/fork adds a session titled "<source title> (fork #n)". The hook receives it; serve the copied
+  // history from `pageMessages`.
   onFork?: (input: { sessionID: string; forkID: string; body: Schema.JsonObject }) => void
   events?: () => OpenCodeEvent[]
   eventRetry?: number
@@ -1208,7 +1208,6 @@ function mockHandlers(
                 ...source,
                 id: forkID,
                 title: `${currentSession(source, config.directory).title} (fork #${state.forks})`,
-                parentID: body.child === true ? source.id : undefined,
                 time: { created: Date.now(), updated: Date.now() },
               },
               config.directory,

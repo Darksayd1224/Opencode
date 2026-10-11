@@ -5,7 +5,7 @@ import type { MountedSession, SessionRef, SetupContext } from "../sdk"
 import type SideChat from "./index"
 import { nextOrdinal, quoteText } from "./transcript"
 
-/** Side chats per session: child sessions forked from the main one, one tab each, until the tab closes. */
+/** Side chats per session: sessions forked from the main one, one tab each, deleted when the tab closes. */
 export function createSideChat(ctx: SetupContext<typeof SideChat>) {
   const saved = (session: SessionRef) => ctx.stores.chats(session)
   // Unsent composer text by tab id. It lives only as long as the window, like the other composers' unsaved edits.
@@ -48,7 +48,7 @@ export function createSideChat(ctx: SetupContext<typeof SideChat>) {
     starting.add(session.key)
 
     const forked = await session.server.client.session
-      .fork({ sessionID: session.id, child: true })
+      .fork({ sessionID: session.id })
       .catch((cause: unknown) => {
         fail(ctx.t("start.failed"), cause)
 
@@ -106,6 +106,26 @@ export function createSideChat(ctx: SetupContext<typeof SideChat>) {
         setDrafts(id, (current) => current || text)
         fail(ctx.t("send.failed"), cause)
       })
+    },
+    /** Answers a permission request the chat's session is waiting on; side chats have no child dock in the main one. */
+    allow(session: MountedSession, id: string, requestID: string, decision: "once" | "always" | "reject") {
+      const chat = entry(session, id)
+
+      if (!chat) return
+
+      void session.server.data.session.permission
+        .reply({ sessionID: chat.sessionID, requestID, decision })
+        .catch((cause: unknown) => fail(ctx.t("common.requestFailed"), cause))
+    },
+    /** Dismisses a question the chat's session is waiting on, so its turn goes on without an answer. */
+    skip(session: MountedSession, id: string, formID: string) {
+      const chat = entry(session, id)
+
+      if (!chat) return
+
+      void session.server.data.session.form
+        .cancel({ sessionID: chat.sessionID, formID })
+        .catch((cause: unknown) => fail(ctx.t("common.requestFailed"), cause))
     },
     /** Interrupts the chat's running turn. */
     stop(session: MountedSession, id: string) {

@@ -35,7 +35,7 @@ const setup: Setup<typeof SideChat> = (ctx) => {
       description: ctx.t("command.description"),
       group: ctx.t("command.category.session"),
       section: "session",
-      bind: "mod+shift+n",
+      bind: "mod+alt+n",
       // Offered only while a session is open in a desktop-width window.
       enabled: !layout.narrow() && mounted(),
       run: () => void chats.start(),
