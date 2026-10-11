@@ -137,8 +137,9 @@ try {
   process.exitCode = 1
 } finally {
   // Clean shutdown: clear the active-sessions manifest so the next startup
-  // knows the previous process exited cleanly (not a crash).
-  await Effect.runPromise(ActiveManifest.clear()).catch(() => {})
+  // knows the previous process exited cleanly (not a crash). Only a process
+  // that wrote entries may clear it; other CLI invocations leave it alone.
+  await Effect.runPromise(ActiveManifest.clearIfOwner()).catch(() => {})
   // Some subprocesses don't react properly to SIGTERM and similar signals.
   // Most notably, some docker-container-based MCP servers don't handle such signals unless
   // run using `docker run --init`.

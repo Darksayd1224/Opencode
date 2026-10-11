@@ -188,7 +188,7 @@ test("E2E: repeated unclean restarts keep the manifest until a clean shutdown", 
   })
 })
 
-test("E2E: one process's clean exit wipes another process's entries", async () => {
+test("E2E: a non-writer's clean exit keeps another process's entries", async () => {
   await withTmpDir(async (dir) => {
     setManifestDir(dir)
     // Helper scripts live under the package so workspace imports resolve.
@@ -236,11 +236,13 @@ test("E2E: one process's clean exit wipes another process's entries", async () =
       const b = Bun.spawn([process.execPath, procB, dir], { stdout: "inherit", stderr: "inherit" })
       expect(await b.exited).toBe(0)
 
-      // GAP: B's clean exit removed the whole manifest — including A's entry
-      // while A is still alive. The plan requires one clean exit NOT to clear
-      // another process's entries; the donor clears unconditionally.
+      // Local scope fix: B never wrote an entry, so its clean exit must NOT
+      // remove the manifest that still holds A's live entry (plan requirement;
+      // the donor cleared unconditionally).
       const file = Bun.file(path.join(dir, "active-sessions.json"))
-      expect(await file.exists()).toBe(false)
+      expect(await file.exists()).toBe(true)
+      const kept = await Effect.runPromise(ActiveManifest.read())
+      expect(kept.map((s) => s.id)).toEqual(["proc-a-session"])
 
       a.kill()
       await a.exited
