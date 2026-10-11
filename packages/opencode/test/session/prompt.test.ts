@@ -2468,3 +2468,87 @@ noLLMServer.instance(
     }),
   30_000,
 )
+
+const runOneTool = Effect.fn("test.runOneTool")(function* (
+  config: (url: string) => Partial<ConfigV1.Info>,
+  tool: string,
+  input: Record<string, unknown>,
+) {
+  const { llm } = yield* useServerConfig(config)
+  const prompt = yield* SessionPrompt.Service
+  const sessions = yield* Session.Service
+  const chat = yield* sessions.create({
+    title: "Tool time limit",
+    permission: [{ permission: "*", pattern: "*", action: "allow" }],
+  })
+  yield* prompt.prompt({ sessionID: chat.id, agent: "build", noReply: true, parts: [{ type: "text", text: "go" }] })
+  yield* llm.tool(tool, input)
+  yield* llm.text("after the tool")
+  const result = yield* prompt.loop({ sessionID: chat.id })
+  const msgs = yield* MessageV2.filterCompactedEffect(chat.id)
+  return { llm, result, part: toolPart(msgs.flatMap((msg) => msg.parts)) }
+})
+
+it.instance(
+  "a plugin tool that never finishes is ended at its declared limit and the turn continues",
+  () =>
+    Effect.gen(function* () {
+      const { directory } = yield* TestInstance
+      yield* writeText(
+        path.join(directory, ".opencode", "tool", "hang.ts"),
+        [
+          "export default {",
+          "  description: 'never finishes',",
+          "  args: {},",
+          "  timeout: 300,",
+          "  execute: () => new Promise(() => {}),",
+          "}",
+          "",
+        ].join("\n"),
+      )
+      const { llm, result, part } = yield* runOneTool(providerCfg, "hang", {})
+
+      expect(part?.state.status).toBe("error")
+      if (part?.state.status === "error")
+        expect(part.state.error).toBe("tool call exceeded its 300ms limit (tool default)")
+      expect(yield* llm.calls).toBe(2)
+      expect(JSON.stringify((yield* llm.inputs)[1])).toContain("tool call exceeded its 300ms limit (tool default)")
+      expect(result.parts.some((item) => item.type === "text" && item.text === "after the tool")).toBe(true)
+    }),
+  30_000,
+)
+
+unix(
+  "bash's own timeout raises its limit above tool_timeout.default",
+  () =>
+    Effect.gen(function* () {
+      const { part } = yield* runOneTool((url) => ({ ...providerCfg(url), tool_timeout: { default: 300 } }), "bash", {
+        command: "sleep 1; printf slept",
+        timeout: 5000,
+        description: "sleep",
+      })
+      expect(part?.state.status).toBe("completed")
+      if (part?.state.status === "completed") expect(part.state.output).toContain("slept")
+    }),
+  { git: true },
+  30_000,
+)
+
+unix(
+  "tool_timeout.bash ends a bash call even when the call asks for longer",
+  () =>
+    Effect.gen(function* () {
+      const started = Date.now()
+      const { part } = yield* runOneTool((url) => ({ ...providerCfg(url), tool_timeout: { bash: 300 } }), "bash", {
+        command: "sleep 20",
+        timeout: 60_000,
+        description: "sleep",
+      })
+      expect(part?.state.status).toBe("error")
+      if (part?.state.status === "error")
+        expect(part.state.error).toBe("tool call exceeded its 300ms limit (config: tool_timeout.bash)")
+      expect(Date.now() - started).toBeLessThan(10_000)
+    }),
+  { git: true },
+  30_000,
+)
