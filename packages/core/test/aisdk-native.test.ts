@@ -93,6 +93,68 @@ describe("AISDKNative", () => {
     })
   })
 
+  test("moves OpenAI-compatible chat template options into the request body", () => {
+    expect(
+      map("@ai-sdk/openai-compatible", {
+        apiKey: "secret",
+        baseURL: "https://compatible.example/v1",
+        reasoningEffort: "high",
+        chat_template_kwargs: { enable_thinking: true, preserve_thinking: false },
+      }),
+    ).toEqual({
+      package: "@opencode/ai/providers/openai-compatible",
+      settings: {
+        apiKey: "secret",
+        baseURL: "https://compatible.example/v1",
+        provider: "test-provider",
+        reasoningEffort: "high",
+      },
+      body: { chat_template_kwargs: { enable_thinking: true, preserve_thinking: false } },
+    })
+  })
+
+  test("keeps explicit body overrides above migrated chat template options", () => {
+    const target: {
+      package: string
+      settings: Record<string, unknown>
+      body: Record<string, unknown>
+      variants: { id: string; settings: Record<string, unknown>; body: Record<string, unknown> }[]
+    } = {
+      package: "aisdk:@ai-sdk/openai-compatible",
+      settings: {
+        chat_template_kwargs: { enable_thinking: true, preserve_thinking: false },
+        extraBody: { chat_template_kwargs: { enable_thinking: false }, top_k: 20 },
+      },
+      body: { chat_template_kwargs: { preserve_thinking: true } },
+      variants: [
+        {
+          id: "thinking",
+          settings: { chat_template_kwargs: { enable_thinking: true, reasoning_effort: "low" } },
+          body: { chat_template_kwargs: { reasoning_effort: "high" } },
+        },
+      ],
+    }
+    AISDKNative.rewrite(target, { specifier: target.package, providerID: "local" })
+    expect(target.body).toEqual({
+      chat_template_kwargs: { enable_thinking: false, preserve_thinking: true },
+      top_k: 20,
+    })
+    expect(target.variants).toEqual([
+      {
+        id: "thinking",
+        settings: {},
+        body: { chat_template_kwargs: { enable_thinking: true, reasoning_effort: "high" } },
+      },
+    ])
+  })
+
+  test("does not move chat template settings for unrelated providers", () => {
+    expect(map("@ai-sdk/anthropic", { chat_template_kwargs: { thinking_mode: "enabled" } })).toEqual({
+      package: "@opencode/ai/providers/anthropic",
+      settings: { chat_template_kwargs: { thinking_mode: "enabled" } },
+    })
+  })
+
   test("maps Anthropic settings and request options to the native provider", () => {
     expect(
       map("@ai-sdk/anthropic", {

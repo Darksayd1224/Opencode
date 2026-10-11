@@ -164,7 +164,21 @@ type Overlay = {
 
 function options(replacement: string, modelID: string | undefined, settings: Legacy): Overlay {
   const converse = replacement === "@opencode/ai/providers/amazon-bedrock" && modelID !== undefined
-  const kept = Struct.omit(settings, ["headers", "extraBody", "useCompletionUrls", ...OPENROUTER_KEYS])
+  const compatible = replacement === "@opencode/ai/providers/openai-compatible"
+  const kept = Struct.omit(settings, [
+    "headers",
+    "extraBody",
+    "useCompletionUrls",
+    ...OPENROUTER_KEYS,
+    ...(compatible ? ["chat_template_kwargs"] : []),
+  ])
+  // The compatible SDK forwards this extension, but native typed settings do not encode it.
+  const body = Provider.mergeOverlay(
+    compatible && settings.chat_template_kwargs !== undefined
+      ? { chat_template_kwargs: settings.chat_template_kwargs }
+      : undefined,
+    settings.extraBody,
+  )
   const thinking = converse ? bedrockThinking(modelID, settings) : undefined
   return {
     settings: {
@@ -172,7 +186,7 @@ function options(replacement: string, modelID: string | undefined, settings: Leg
       ...(thinking === undefined ? {} : { thinking }),
     },
     ...(settings.headers === undefined ? {} : { headers: settings.headers }),
-    ...(settings.extraBody === undefined ? {} : { body: settings.extraBody }),
+    ...(body === undefined ? {} : { body }),
     ...(converse ? bedrockRequest(modelID, settings) : {}),
     ...(replacement === "@opencode/ai/providers/openrouter" ? openRouterRequest(settings) : {}),
   }
@@ -295,6 +309,7 @@ const Legacy = Schema.StructWithRest(
     baseURL: lenient(Schema.String),
     headers: lenient(Schema.Record(Schema.String, Schema.String)),
     extraBody: lenient(Schema.Record(Schema.String, Schema.Unknown)),
+    chat_template_kwargs: lenient(Schema.Record(Schema.String, Schema.Unknown)),
     useCompletionUrls: lenient(Schema.Boolean),
     auth: lenient(Schema.Literals(["bearer", "sigv4"])),
     bearerToken: lenient(Schema.String),
