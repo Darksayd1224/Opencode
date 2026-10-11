@@ -103,31 +103,35 @@ validate_deb() {
 validate_rpm() {
   echo "Validating RPM: $pkg_path"
 
-  rpm -qip "$pkg_path" > /dev/null 2>&1 || fail "rpm -qip failed"
+  local rpm_db
+  rpm_db=$(mktemp -d)
+  trap 'rm -rf "$rpm_db"' RETURN
+
+  rpm --dbpath "$rpm_db" -qip "$pkg_path" > /dev/null 2>&1 || fail "rpm -qip failed"
   pass "Package metadata is valid"
 
-  rpm -qlp "$pkg_path" | grep -q "/usr/bin/opencode" || fail "Binary /usr/bin/opencode not found in package"
+  rpm --dbpath "$rpm_db" -qlp "$pkg_path" | grep -q "/usr/bin/opencode" || fail "Binary /usr/bin/opencode not found in package"
   pass "Binary /usr/bin/opencode present"
 
   # Check ripgrep is a recommended (weak) dependency
   local rpm_recommends
-  rpm_recommends=$(rpm -qp --recommends "$pkg_path" 2>/dev/null || true)
+  rpm_recommends=$(rpm --dbpath "$rpm_db" -qp --recommends "$pkg_path" 2>/dev/null || true)
   echo "$rpm_recommends" | grep -q "ripgrep" || fail "ripgrep not in RPM Recommends (got: $rpm_recommends)"
   pass "ripgrep listed in Recommends"
 
   local arch
-  arch=$(rpm -qp --qf '%{ARCH}' "$pkg_path")
+  arch=$(rpm --dbpath "$rpm_db" -qp --qf '%{ARCH}' "$pkg_path")
   [[ "$arch" == "x86_64" || "$arch" == "aarch64" ]] || fail "Unexpected architecture: $arch"
   pass "Architecture: $arch"
 
   local name
-  name=$(rpm -qp --qf '%{NAME}' "$pkg_path")
+  name=$(rpm --dbpath "$rpm_db" -qp --qf '%{NAME}' "$pkg_path")
   [[ "$name" == "opencode" ]] || fail "Unexpected package name: $name"
   pass "Package name: $name"
 
   if [[ -n "$expected_version" ]]; then
     local pkg_version
-    pkg_version=$(rpm -qp --qf '%{VERSION}' "$pkg_path")
+    pkg_version=$(rpm --dbpath "$rpm_db" -qp --qf '%{VERSION}' "$pkg_path")
     # nfpm converts semver prerelease hyphens to tildes (e.g. 2.0.27-beta.1 -> 2.0.27~beta.1)
     local normalized_version="${expected_version//-/\~}"
     [[ "$pkg_version" == "$normalized_version" ]] || fail "Version mismatch: expected $normalized_version, got $pkg_version"

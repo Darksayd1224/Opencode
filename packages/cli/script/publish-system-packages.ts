@@ -61,6 +61,10 @@ await $`ls -la ${outputDir}/*.deb ${outputDir}/*.rpm`.nothrow()
 
 const packages = await Array.fromAsync(new Bun.Glob("*.{deb,rpm}").scan({ cwd: outputDir, absolute: true }))
 
+if (packages.length !== 4) {
+  throw new Error(`Expected 4 system packages, found ${packages.length}`)
+}
+
 for (const pkg of packages) {
   const ext = pkg.endsWith(".deb") ? "deb" : "rpm"
   const result = await $`bash ${packagingDir}/validate.sh --${ext} ${pkg} --version ${version}`.nothrow()

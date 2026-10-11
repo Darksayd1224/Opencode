@@ -62,8 +62,11 @@ nix run nixpkgs#opencode           # or github:anomalyco/opencode for latest dev
 
 # System packages (amd64 and arm64)
 # Download from https://opencode.ai/download
-sudo dpkg -i opencode_*_amd64.deb  # Debian/Ubuntu
-sudo rpm -i opencode-*.x86_64.rpm  # Fedora/RHEL
+# Examples: opencode_2.0.27_amd64.deb, opencode_2.0.27~beta.1_arm64.deb
+sudo dpkg -i opencode_<package-version>_amd64.deb  # Debian/Ubuntu x86_64
+sudo dpkg -i opencode_<package-version>_arm64.deb  # Debian/Ubuntu arm64
+sudo rpm -i opencode-<package-version>-1.x86_64.rpm # Fedora/RHEL x86_64
+sudo rpm -i opencode-<package-version>-1.aarch64.rpm # Fedora/RHEL arm64
 ```
 
 > [!TIP]
