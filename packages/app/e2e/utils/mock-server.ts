@@ -1374,9 +1374,10 @@ function mockHandlers(
 
 // The requested workspace (directory) inside the configured project.
 function location(config: MockServerConfig, directory = config.directory) {
+  const project = projectSeed(config)
   return {
     directory,
-    project: { id: projectSeed(config)?.id, directory: config.directory, canonical: config.directory },
+    project: { id: project?.id, directory: config.directory, canonical: project?.canonical ?? config.directory },
   }
 }
 
