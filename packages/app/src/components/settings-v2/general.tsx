@@ -8,7 +8,7 @@ import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useUpdaterAction } from "../updater-action"
-import { useSettings } from "@/context/settings"
+import { fontSizeMinimum, fontSizeMaximum, useSettings } from "@/context/settings"
 import { ExternalLink } from "../external-link"
 import { SettingsListV2 } from "./parts/list"
 import { SettingsRowV2 } from "./parts/row"
@@ -172,6 +172,34 @@ const AppearanceSection: Component<{ controller: AppearanceSettingsController }>
         <FontSetting kind="ui" fonts={props.controller.fonts} />
         <FontSetting kind="code" fonts={props.controller.fonts} />
         <FontSetting kind="terminal" fonts={props.controller.fonts} />
+        <SettingsRowV2
+          title={language.t("settings.general.row.fontSize.title")}
+          description={
+            <bdi dir="ltr">
+              {fontSizeMinimum}–{fontSizeMaximum} px
+            </bdi>
+          }
+        >
+          <div class="w-24">
+            <TextInputV2
+              data-action="settings-font-size"
+              type="number"
+              dir="ltr"
+              numeric
+              min={fontSizeMinimum}
+              max={fontSizeMaximum}
+              step={1}
+              aria-label={language.t("settings.general.row.fontSize.title")}
+              value={props.controller.fonts.size()}
+              onChange={(event) => {
+                if (Number.isFinite(event.currentTarget.valueAsNumber)) {
+                  props.controller.fonts.setSize(event.currentTarget.valueAsNumber)
+                }
+                event.currentTarget.value = `${props.controller.fonts.size()}`
+              }}
+            />
+          </div>
+        </SettingsRowV2>
       </SettingsListV2>
     </div>
   )

@@ -1,4 +1,5 @@
 export const dict = {
+  "settings.general.row.fontSize.title": "Μέγεθος γραμματοσειράς",
   "desktop.menu.app": "OpenCode",
   "desktop.menu.file": "Αρχείο",
   "desktop.menu.edit": "Επεξεργασία",

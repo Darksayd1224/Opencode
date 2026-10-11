@@ -1,4 +1,5 @@
 export const dict: Record<string, string> = {
+  "settings.general.row.fontSize.title": "ཚད།",
   "desktop.menu.app": "OpenCode",
   "desktop.menu.file": "ཡིག༌སྣོད",
   "desktop.menu.edit": "ཞུན༌དག",

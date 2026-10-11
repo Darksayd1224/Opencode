@@ -8,9 +8,25 @@ import {
   newLayoutDesignsDefault,
   nextSunsetCheckDelay,
   resolveNewLayoutDesigns,
+  resolveFontSize,
   shouldDisplayTabsToast,
   shouldEnableNewLayout,
 } from "./settings"
+
+describe("font size", () => {
+  test("preserves the default for old or invalid preferences", () => {
+    expect(resolveFontSize(undefined)).toBe(14)
+    expect(resolveFontSize(NaN)).toBe(14)
+    expect(resolveFontSize(Infinity)).toBe(14)
+  })
+
+  test("clamps and rounds persisted and entered values", () => {
+    expect(resolveFontSize(0)).toBe(10)
+    expect(resolveFontSize(100)).toBe(24)
+    expect(resolveFontSize(16.6)).toBe(17)
+    expect(resolveFontSize(14)).toBe(14)
+  })
+})
 
 describe("agent visibility", () => {
   test("shows the picker for existing profiles and hides it for first-time installs", () => {

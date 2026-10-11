@@ -90,6 +90,8 @@ export function createAppearanceSettingsController() {
       select: (option: { id: string } | null) => option && theme.setTheme(option.id),
     },
     fonts: {
+      size: settings.appearance.fontSize,
+      setSize: (value: number) => settings.appearance.setFontSize(value),
       ui: createMemo(() => ({
         value: sansInput(settings.appearance.uiFont()),
         family: sansFontFamily(settings.appearance.uiFont()),

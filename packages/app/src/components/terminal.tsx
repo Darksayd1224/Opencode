@@ -340,8 +340,10 @@ export const Terminal = (props: TerminalProps) => {
 
   createEffect(() => {
     const font = terminalFontFamily(settings.appearance.terminalFont())
+    const size = settings.appearance.fontSize()
     if (!term) return
     setOptionIfSupported(term, "fontFamily", font)
+    setOptionIfSupported(term, "fontSize", size)
     scheduleFit()
   })
 
@@ -402,7 +404,7 @@ export const Terminal = (props: TerminalProps) => {
         cursorStyle: "bar",
         cols: restoreSize?.cols,
         rows: restoreSize?.rows,
-        fontSize: 14,
+        fontSize: settings.appearance.fontSize(),
         fontFamily: terminalFontFamily(settings.appearance.terminalFont()),
         allowTransparency: false,
         convertEol: false,

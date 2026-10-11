@@ -1,4 +1,5 @@
 export const dict: Record<string, string> = {
+  "settings.general.row.fontSize.title": "আকার",
   "desktop.menu.app": "OpenCode",
   "desktop.menu.file": "ফাইল",
   "desktop.menu.edit": "সম্পাদনা করুন",

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs"
 import solidPlugin from "vite-plugin-solid"
 import tailwindcss from "@tailwindcss/vite"
+import { typography } from "./src/utils/typography.js"
 import { fileURLToPath } from "url"
 
 const theme = fileURLToPath(new URL("./public/oc-theme-preload.js", import.meta.url))
@@ -20,6 +21,11 @@ export default [
     name: "opencode-desktop:config",
     config() {
       return {
+        css: {
+          postcss: {
+            plugins: [typography()],
+          },
+        },
         resolve: {
           alias: {
             "@": fileURLToPath(new URL("./src", import.meta.url)),

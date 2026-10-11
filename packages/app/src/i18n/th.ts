@@ -1,4 +1,5 @@
 export const dict = {
+  "settings.general.row.fontSize.title": "ขนาดแบบอักษร",
   "desktop.menu.app": "OpenCode",
   "desktop.menu.file": "ไฟล์",
   "desktop.menu.edit": "แก้ไข",

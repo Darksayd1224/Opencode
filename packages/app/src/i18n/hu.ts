@@ -94,6 +94,7 @@ const desktop = [
 ]
 
 export const dict = {
+  "settings.general.row.fontSize.title": "Betűméret",
   ...Object.fromEntries(DESKTOP_NATIVE_KEYS.map((key, index) => [key, desktop[index]])),
   "command.category.suggested": "Javasolt",
   "command.category.view": "Nézet",

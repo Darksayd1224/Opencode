@@ -94,6 +94,7 @@ const desktop = [
 ]
 
 export const dict = {
+  "settings.general.row.fontSize.title": "Veličina fonta",
   ...Object.fromEntries(DESKTOP_NATIVE_KEYS.map((key, index) => [key, desktop[index]])),
   "command.category.suggested": "Predloženo",
   "command.category.view": "Prikaz",

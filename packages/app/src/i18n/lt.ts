@@ -94,6 +94,7 @@ const desktop = [
 ]
 
 export const dict = {
+  "settings.general.row.fontSize.title": "Dydis",
   ...Object.fromEntries(DESKTOP_NATIVE_KEYS.map((key, index) => [key, desktop[index]])),
   "command.category.suggested": "Siūloma",
   "command.category.view": "Rodinys",

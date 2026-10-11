@@ -1,4 +1,5 @@
 export const dict = {
+  "settings.general.row.fontSize.title": "Kirjasinkoko",
   "command.category.suggested": "Ehdotetut",
   "command.category.view": "Näytä",
   "command.category.project": "Projekti",

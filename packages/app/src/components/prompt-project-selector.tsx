@@ -515,9 +515,9 @@ function ProjectItem(props: {
       classList={{ "!bg-v2-overlay-simple-overlay-hover": props.controller.active() === key() }}
       style={{
         "font-family": "var(--v2-font-family-sans)",
-        "font-size": "13px",
+        "font-size": "calc(13px * var(--font-size-scale, 1))",
         "font-weight": 440,
-        "line-height": "20px",
+        "line-height": "calc(20px * var(--font-size-scale, 1))",
         "letter-spacing": "-0.04px",
         color: "var(--v2-text-text-base)",
         padding: "0 12px",
@@ -559,9 +559,9 @@ function ProjectAction(props: {
       classList={{ "!bg-v2-overlay-simple-overlay-hover": props.controller.active() === key() }}
       style={{
         "font-family": "var(--v2-font-family-sans)",
-        "font-size": "13px",
+        "font-size": "calc(13px * var(--font-size-scale, 1))",
         "font-weight": 440,
-        "line-height": "20px",
+        "line-height": "calc(20px * var(--font-size-scale, 1))",
         "letter-spacing": "-0.04px",
         color: "var(--v2-text-text-base)",
         padding: "0 12px",

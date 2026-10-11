@@ -1,4 +1,5 @@
 export const dict = {
+  "settings.general.row.fontSize.title": "Størrelse",
   "command.category.suggested": "Foreslået",
   "command.category.view": "Vis",
   "command.category.project": "Projekt",

@@ -57,6 +57,16 @@ export interface Settings {
 export const monoDefault = "System Mono"
 export const sansDefault = "System Sans"
 export const terminalDefault = "JetBrainsMono Nerd Font Mono"
+export const fontSizeMinimum = 10
+export const fontSizeMaximum = 24
+
+export function resolveFontSize(value: number | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return 14
+  }
+  return Math.min(fontSizeMaximum, Math.max(fontSizeMinimum, Math.round(value)))
+}
+
 const legacyNewLayoutDesignsDefault = import.meta.env.VITE_OPENCODE_CHANNEL !== "prod"
 export const newLayoutDesignsDefault = true
 // Existing users can switch layouts until local midnight on this date. Set new Date(YYYY, M-1, D) to show.
@@ -348,6 +358,8 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
       const root = document.documentElement
       root.style.setProperty("--font-family-mono", monoFontFamily(store.appearance?.mono))
       root.style.setProperty("--font-family-sans", sansFontFamily(store.appearance?.sans))
+      // Scale typography without changing layout spacing or the selected font families.
+      root.style.setProperty("--font-size-scale", `${resolveFontSize(store.appearance?.fontSize) / 14}`)
     })
 
     createEffect(() => {
@@ -459,9 +471,9 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         customAgents: visible(showCustomAgents),
       },
       appearance: {
-        fontSize: withFallback(() => store.appearance?.fontSize, defaultSettings.appearance.fontSize),
+        fontSize: createMemo(() => resolveFontSize(store.appearance?.fontSize)),
         setFontSize(value: number) {
-          setStore("appearance", "fontSize", value)
+          setStore("appearance", "fontSize", resolveFontSize(value))
         },
         font: withFallback(() => store.appearance?.mono, defaultSettings.appearance.mono),
         setFont(value: string) {
