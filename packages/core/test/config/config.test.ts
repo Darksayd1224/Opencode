@@ -1242,6 +1242,66 @@ describe("Config", () => {
     ),
   )
 
+  it.live("keeps mcp servers when an env substitution contains JSON escapes", () =>
+    Effect.acquireUseRelease(
+      Effect.sync(() => {
+        const previous = process.env.OPENCODE_TEST_PATH
+        process.env.OPENCODE_TEST_PATH = 'C:\\Windows\\system32"extra'
+        return previous
+      }),
+      () =>
+        Effect.acquireUseRelease(
+          Effect.promise(() => tmpdir()),
+          (tmp) =>
+            Effect.gen(function* () {
+              yield* Effect.promise(() =>
+                fs.writeFile(
+                  path.join(tmp.path, "opencode.jsonc"),
+                  `{
+                    "mcp": {
+                      "servers": {
+                        "demo": {
+                          "type": "local",
+                          "command": ["python.exe", "server.py"],
+                          "environment": { "PATH": "{env:OPENCODE_TEST_PATH};C:\\\\extra\\\\bin" }
+                        },
+                        "other": {
+                          "type": "remote",
+                          "url": "https://example.com/mcp"
+                        }
+                      }
+                    }
+                  }`,
+                ),
+              )
+
+              return yield* Effect.gen(function* () {
+                const config = yield* Config.Service
+                const document = (yield* config.entries()).find((entry) => entry.type === "document")
+                const demo = document?.info.mcp?.servers?.demo
+                const other = document?.info.mcp?.servers?.other
+                expect(demo?.type).toBe("local")
+                if (demo?.type !== "local") return
+                expect(demo.command).toEqual(["python.exe", "server.py"])
+                expect(demo.environment).toEqual({
+                  PATH: 'C:\\Windows\\system32"extra;C:\\extra\\bin',
+                })
+                expect(other).toEqual({
+                  type: "remote",
+                  url: "https://example.com/mcp",
+                })
+              }).pipe(Effect.provide(testLayer(tmp.path)))
+            }),
+          (tmp) => Effect.promise(() => tmp[Symbol.asyncDispose]()),
+        ),
+      (previous) =>
+        Effect.sync(() => {
+          if (previous === undefined) delete process.env.OPENCODE_TEST_PATH
+          else process.env.OPENCODE_TEST_PATH = previous
+        }),
+    ),
+  )
+
   it.live("does not load legacy config.json files", () =>
     Effect.acquireDisposable(Effect.promise(() => tmpdir())).pipe(
       Effect.flatMap((tmp) =>
