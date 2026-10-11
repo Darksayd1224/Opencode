@@ -12,6 +12,7 @@ import { SessionMessage } from "./message"
 import { SessionMessageUpdater } from "./message-updater"
 import { SessionInput } from "./input"
 import { WorkspaceV2 } from "../workspace"
+import { recover as recoverSessions } from "./recovery"
 import { MessageTable, PartTable, SessionInputTable, SessionMessageTable, SessionTable } from "./sql"
 import type { DeepMutable } from "../schema"
 
@@ -449,6 +450,8 @@ const layer = Layer.effectDiscard(
           .pipe(Effect.orDie)
       }),
     )
+
+    yield* recoverSessions
   }),
 )
 

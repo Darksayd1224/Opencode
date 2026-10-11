@@ -13,6 +13,10 @@ import { makeGlobalNode } from "../effect/app-node"
 const makeDatabase = EffectDrizzleSqlite.makeWithDefaults()
 type DatabaseShape = Effect.Success<typeof makeDatabase>
 
+function recoveryMutationEnabled() {
+  return process.env.OPENCODE_RECOVERY_MUTATE === "1" || process.env.OPENCODE_RECOVERY_MUTATE === "true"
+}
+
 export interface Interface {
   db: DatabaseShape
 }
@@ -29,8 +33,17 @@ const layer = Layer.effect(
     yield* db.run("PRAGMA busy_timeout = 5000")
     yield* db.run("PRAGMA cache_size = -64000")
     yield* db.run("PRAGMA foreign_keys = ON")
+    yield* db.run("PRAGMA wal_autocheckpoint = 1000")
     yield* db.run("PRAGMA wal_checkpoint(PASSIVE)")
     yield* DatabaseMigration.apply(db)
+
+    if (recoveryMutationEnabled()) {
+      yield* Effect.addFinalizer(
+        Effect.fnUntraced(function* () {
+          yield* db.run("PRAGMA wal_checkpoint(TRUNCATE)").pipe(Effect.ignore)
+        }),
+      )
+    }
 
     return { db }
   }).pipe(Effect.orDie),
