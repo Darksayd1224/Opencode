@@ -161,10 +161,43 @@ function info(file: string, options?: Options, bin?: string): Item {
   }
 }
 
+export function env(platform = process.platform): Record<string, string> {
+  if (platform === "win32") {
+    return {
+      LC_ALL: "C.UTF-8",
+      LC_CTYPE: "C.UTF-8",
+      LANG: "C.UTF-8",
+      PYTHONIOENCODING: "utf-8",
+    }
+  }
+  return {}
+}
+
 export function args(file: string, command: string) {
   const n = name(file)
-  if (n === "cmd") return ["/c", command]
-  if (ps(file)) return ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command]
+  if (n === "cmd") return ["/d", "/c", `chcp 65001 >nul 2>nul & ${command}`]
+  if (ps(file)) {
+    const payload = Buffer.from(command, "utf8").toString("base64")
+    const script = [
+      "$ProgressPreference = 'SilentlyContinue'",
+      "$utf8 = [System.Text.UTF8Encoding]::new($false)",
+      "[Console]::InputEncoding = $utf8",
+      "[Console]::OutputEncoding = $utf8",
+      "$OutputEncoding = $utf8",
+      `& ([scriptblock]::Create([System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${payload}'))))`,
+      "$success = $?",
+      "$code = $LASTEXITCODE",
+      "if ($null -ne $code) { exit $code }",
+      "if (-not $success) { exit 1 }",
+    ].join("; ")
+    return [
+      "-NoLogo",
+      "-NoProfile",
+      "-NonInteractive",
+      "-EncodedCommand",
+      Buffer.from(script, "utf16le").toString("base64"),
+    ]
+  }
   return ["-c", command]
 }
 
