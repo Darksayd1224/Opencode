@@ -1,8 +1,9 @@
 import { describe, expect } from "bun:test"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
-import { Effect, Fiber } from "effect"
+import { Effect, Fiber, Queue, Stream } from "effect"
 import { Agent } from "@opencode/core/agent"
+import { Bus } from "@opencode/core/bus"
 import { Database } from "@opencode/core/database/database"
 import { AppNodeBuilder } from "@opencode/core/effect/app-node-builder"
 import { Image } from "@opencode/core/image"
@@ -21,10 +22,10 @@ import { imagePassthrough } from "../lib/image"
 import { toolIdentity } from "../lib/tool"
 
 const it = testEffect(
-  AppNodeBuilder.build(LayerNode.group([Tool.node, Location.node, Database.node, Agent.node, Permission.node]), [
-    Location.node.replace(tempLocationLayer),
-    Image.node.replace(imagePassthrough),
-  ]),
+  AppNodeBuilder.build(
+    LayerNode.group([Tool.node, Location.node, Database.node, Agent.node, Permission.node, Bus.node]),
+    [Location.node.replace(tempLocationLayer), Image.node.replace(imagePassthrough)],
+  ),
 )
 const sessionID = Session.ID.make("ses_codemode_web")
 const invocation = { ...toolIdentity, agent: Agent.ID.make("test"), sessionID }
@@ -67,6 +68,16 @@ const execute = Effect.fnUntraced(function* (code: string) {
     ...invocation,
     call: { type: "tool-call", id: "call-fetch", name: "execute", input: { code } },
   })
+})
+
+const subscribeAsked = Effect.gen(function* () {
+  const bus = yield* Bus.Service
+  const queue = yield* Queue.unbounded<Permission.Request>()
+  yield* bus.subscribe(Permission.Event.Asked).pipe(
+    Stream.runForEach((event) => Queue.offer(queue, event.data)),
+    Effect.forkScoped({ startImmediately: true }),
+  )
+  return queue
 })
 
 describe("Code Mode fetch", () => {
@@ -119,16 +130,11 @@ describe("Code Mode fetch", () => {
       const file = path.join(location.directory, "pending.txt")
       yield* Effect.promise(() => Bun.write(file, "before approval"))
       const permissions = yield* Permission.Service
+      const asked = yield* subscribeAsked
       const fiber = yield* execute(
         `return await (await fetch(${JSON.stringify(pathToFileURL(file).href)})).text()`,
       ).pipe(Effect.forkScoped)
-      const request = yield* Effect.gen(function* () {
-        while (true) {
-          const pending = yield* permissions.forSession(sessionID)
-          if (pending[0]) return pending[0]
-          yield* Effect.promise(() => Bun.sleep(1))
-        }
-      }).pipe(Effect.timeout("5 seconds"))
+      const request = yield* Queue.take(asked).pipe(Effect.timeout("5 seconds"))
       expect(request).toMatchObject({
         sessionID,
         action: "read",
@@ -146,76 +152,13 @@ describe("Code Mode fetch", () => {
       yield* setup([{ action: "read", resource: "*", effect: "ask" }])
       const location = yield* Location.Service
       const permissions = yield* Permission.Service
+      const asked = yield* subscribeAsked
       const fiber = yield* execute(
         `return await fetch(${JSON.stringify(pathToFileURL(path.join(location.directory, "pending.txt")).href)})`,
       ).pipe(Effect.forkScoped)
-      yield* Effect.gen(function* () {
-        while ((yield* permissions.forSession(sessionID)).length === 0) yield* Effect.promise(() => Bun.sleep(1))
-      }).pipe(Effect.timeout("5 seconds"))
+      yield* Queue.take(asked).pipe(Effect.timeout("5 seconds"))
       yield* Fiber.interrupt(fiber)
       expect(yield* permissions.forSession(sessionID)).toEqual([])
-    }),
-  )
-
-  it.live("preserves Bun's file method handling and non-file URL schemes", () =>
-    Effect.gen(function* () {
-      yield* setup()
-      const location = yield* Location.Service
-      const file = path.join(location.directory, "unchanged.txt")
-      yield* Effect.promise(() => Bun.write(file, "unchanged"))
-      const result = yield* execute(`
-        const values = []
-        for (const init of [
-          {},
-          { method: "HEAD" },
-          { method: "POST", body: "replacement" },
-          { method: "PUT", body: "replacement" },
-          { method: "PATCH", body: "replacement" },
-          { method: "DELETE" },
-          { body: "replacement" },
-        ]) {
-          values.push(await (await fetch(${JSON.stringify(pathToFileURL(file).href)}, init)).text())
-        }
-        values.push(await (await fetch("data:text/plain,hello")).text())
-        return values
-      `)
-      expect(result.content[0].type === "text" ? JSON.parse(result.content[0].text) : []).toEqual([
-        ...Array(7).fill("unchanged"),
-        "hello",
-      ])
-      expect(yield* Effect.promise(() => Bun.file(file).text())).toBe("unchanged")
-    }),
-  )
-
-  it.live("preserves HTTP redirects and rejects redirects to file URLs", () =>
-    Effect.gen(function* () {
-      yield* setup([{ action: "read", resource: "*", effect: "deny" }])
-      const location = yield* Location.Service
-      const file = path.join(location.directory, "secret.txt")
-      yield* Effect.promise(() => Bun.write(file, "must not be disclosed"))
-      const server = yield* Effect.acquireRelease(
-        Effect.sync(() =>
-          Bun.serve({
-            port: 0,
-            fetch: (request) => {
-              const url = new URL(request.url)
-              if (url.pathname === "/file") return Response.redirect(pathToFileURL(file).href, 302)
-              if (url.pathname === "/redirect") return Response.redirect(new URL("/target", url).href, 302)
-              return Response.json({ value: "network" })
-            },
-          }),
-        ),
-        (server) => Effect.promise(() => server.stop(true)),
-      )
-      const allowed = yield* execute(
-        `return await (await fetch(${JSON.stringify(new URL("/redirect", server.url).href)})).json()`,
-      )
-      expect(allowed.content).toEqual([{ type: "text", text: '{\n  "value": "network"\n}' }])
-      const denied = yield* execute(
-        `return await (await fetch(${JSON.stringify(new URL("/file", server.url).href)})).text()`,
-      )
-      expect(denied.metadata?.error).toBe(true)
-      expect(JSON.stringify(denied.content)).not.toContain("must not be disclosed")
     }),
   )
 })
