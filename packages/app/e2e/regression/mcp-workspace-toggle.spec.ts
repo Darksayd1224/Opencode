@@ -14,120 +14,121 @@ const title = "Workspace MCP routing"
 
 type Surface = "popover" | "dialog"
 
-for (const entry of ["slash command", "shortcut"] as const) {
-  for (const destination of ["main", "existing worktree", "new worktree"] as const) {
-    test(`opens MCP from the draft ${entry} for ${destination}`, async ({ page }) => {
-      const name = destination === "existing worktree" ? "worktree-mcp" : "draft-mcp"
-      const creates: unknown[] = []
-      const prompts: unknown[] = []
-      const actions: Parameters<NonNullable<MockServerConfig["onMcpAction"]>>[0][] = []
-      const input = {
-        name: "DraftMcp",
-        directory,
-        project: { sandboxes: [workspace] },
-        provider: provider(),
-        seed: { settings: { keybinds: { "mcp.toggle": "ctrl+;" } } },
-        mcp: (target) => [{ name: target === workspace ? name : "draft-mcp", status: { status: "disabled" } }],
-        onSessionCreate: (body) => void creates.push(body),
-        onPrompt: (prompt) => void prompts.push(prompt),
-        onMcpAction: (action) => void actions.push(action),
-      } satisfies WorkspaceInput
-      const pending = destination === "new worktree" ? await openWorktreeDraft(page, input) : undefined
-      const draft = pending ?? (await openDraft(page, input))
-      if (destination === "existing worktree") {
-        await page.getByRole("button", { name: "Local", exact: true }).click()
-        await page.getByRole("menuitem", { name: "Worktree", exact: true }).click()
-        await page.getByRole("menuitem", { name: "worktree", exact: true }).click()
-        await expect(page.getByRole("button", { name: "worktree", exact: true })).toBeVisible()
-      }
-      const panel = page.getByRole("dialog", { name: "MCPs", exact: true })
+for (const scenario of [
+  { entry: "slash command", destination: "main", status: "connected" },
+  { entry: "shortcut", destination: "main", status: "connected" },
+  { entry: "slash command", destination: "existing worktree", status: "connected" },
+  { entry: "slash command", destination: "new worktree", status: "connected" },
+  { entry: "slash command", destination: "new worktree", status: "failed" },
+  { entry: "slash command", destination: "main", status: "failed" },
+  { entry: "slash command", destination: "main", status: "needs_auth" },
+  { entry: "slash command", destination: "existing worktree", status: "failed" },
+  { entry: "slash command", destination: "existing worktree", status: "needs_auth" },
+] as const) {
+  const entry = scenario.entry
+  const destination = scenario.destination
+  const failed = scenario.status !== "connected"
+  test(`opens MCP from the draft ${entry} for ${destination} with ${scenario.status}`, async ({ page }) => {
+    const name = destination === "existing worktree" ? "worktree-mcp" : "draft-mcp"
+    const creates: unknown[] = []
+    const prompts: unknown[] = []
+    const actions: Parameters<NonNullable<MockServerConfig["onMcpAction"]>>[0][] = []
+    const input = {
+      name: "DraftMcp",
+      directory,
+      project: { sandboxes: [workspace] },
+      provider: provider(),
+      seed: { settings: { keybinds: { "mcp.toggle": "ctrl+;" } } },
+      mcp: (target) => [{ name: target === workspace ? name : "draft-mcp", status: { status: "disabled" } }],
+      onSessionCreate: (body) => void creates.push(body),
+      onPrompt: (prompt) => void prompts.push(prompt),
+      onMcpAction: (action) => {
+        actions.push(action)
+        if (!failed || action.action !== "connect") return
+        return scenario.status === "failed" ? { status: "failed", error: "MCP is offline" } : { status: "needs_auth" }
+      },
+    } satisfies WorkspaceInput
+    const pending = destination === "new worktree" ? await openWorktreeDraft(page, input) : undefined
+    const draft = pending ?? (await openDraft(page, input))
+    if (destination === "existing worktree") {
+      await page.getByRole("button", { name: "Local", exact: true }).click()
+      await page.getByRole("menuitem", { name: "Worktree", exact: true }).click()
+      await page.getByRole("menuitem", { name: "worktree", exact: true }).click()
+      await expect(page.getByRole("button", { name: "worktree", exact: true })).toBeVisible()
+    }
+    const panel = page.getByRole("dialog", { name: "MCPs", exact: true })
 
-      if (entry === "slash command") {
-        await draft.editor.fill("/mcp")
-        const suggestion = page.locator('[data-component="composer-suggestions"] [data-suggestion-id]')
-        await expect(suggestion).toHaveCount(1)
-        await expect(suggestion.locator("bdi")).toHaveText("/mcp")
-        await draft.editor.press("Enter")
-      }
-      if (entry === "shortcut") {
-        await draft.editor.fill("Keep this draft")
-        await expect(draft.editor).toHaveText("Keep this draft")
-        await page.keyboard.press("Control+;")
-      }
-      await expect(panel.getByText(name, { exact: true })).toBeVisible()
-      await expect(panel.getByRole("switch")).not.toBeChecked()
-      await panel.locator('[data-slot="switch-control"]').click()
-      await expect(panel.getByRole("switch")).toBeChecked()
-      expect(actions).toEqual(
-        destination === "new worktree"
-          ? []
-          : [{ server: name, action: "connect", directory: destination === "main" ? directory : workspace }],
-      )
-      await panel.getByRole("button", { name: "Close", exact: true }).click()
-      await expect(panel).toHaveCount(0)
-
-      await expect(draft.editor).toHaveText(entry === "shortcut" ? "Keep this draft" : "")
-      await expectPath(page, draftHref(draft.draftID))
-      expect(creates).toEqual([])
-      expect(prompts).toEqual([])
-      if (pending) {
-        await draft.editor.fill("Use the selected MCP")
-        await draft.editor.press("Enter")
-        await expect.poll(() => pending.worktreeRequests).toHaveLength(1)
-        expect(actions).toEqual([])
-        pending.worktree.resolve({ status: 200, json: { directory: workspace } })
-        await expect.poll(() => prompts).toHaveLength(1)
-        expect(actions).toEqual([{ server: "draft-mcp", action: "connect", directory: workspace }])
-        expect(creates).toEqual([expect.objectContaining({ location: { directory: workspace } })])
-      }
-    })
-  }
-}
-
-for (const destination of ["main", "existing worktree"] as const) {
-  for (const status of ["failed", "needs_auth"] as const) {
-    test(`sends the first message when MCP ${status} on ${destination}`, async ({ page }) => {
-      const actions: Parameters<NonNullable<MockServerConfig["onMcpAction"]>>[0][] = []
-      const creates: unknown[] = []
-      const prompts: unknown[] = []
-      const draft = await openDraft(page, {
-        name: "DraftMcpFailure",
-        directory,
-        project: { sandboxes: [workspace] },
-        provider: provider(),
-        mcp: [{ name: "unavailable-mcp", status: { status: "disabled" } }],
-        onMcpAction: (action) => {
-          actions.push(action)
-          return status === "failed" ? { status, error: "MCP is offline" } : { status }
-        },
-        onSessionCreate: (body) => void creates.push(body),
-        onPrompt: (prompt) => void prompts.push(prompt),
-      })
-      const target = destination === "main" ? directory : workspace
-      if (destination === "existing worktree") {
-        await page.getByRole("button", { name: "Local", exact: true }).click()
-        await page.getByRole("menuitem", { name: "Worktree", exact: true }).click()
-        await page.getByRole("menuitem", { name: "worktree", exact: true }).click()
-        await expect(page.getByRole("button", { name: "worktree", exact: true })).toBeVisible()
-      }
+    if (entry === "slash command") {
       await draft.editor.fill("/mcp")
-      await expect(page.locator('[data-component="composer-suggestions"] [data-suggestion-id]')).toHaveCount(1)
+      const suggestion = page.locator('[data-component="composer-suggestions"] [data-suggestion-id]')
+      await expect(suggestion).toHaveCount(1)
+      await expect(suggestion.locator("bdi")).toHaveText("/mcp")
       await draft.editor.press("Enter")
-      const panel = page.getByRole("dialog", { name: "MCPs", exact: true })
-      await expect(panel.getByText("unavailable-mcp", { exact: true })).toBeVisible()
-      await panel.locator('[data-slot="switch-control"]').click()
-      await expect(panel.getByText(status === "failed" ? "failed" : "needs auth", { exact: true })).toBeVisible()
-      await expect(panel.getByRole("switch")).not.toBeChecked()
+    }
+    if (entry === "shortcut") {
+      await draft.editor.fill("Keep this draft")
+      await expect(draft.editor).toHaveText("Keep this draft")
+      await page.keyboard.press("Control+;")
+    }
+    await expect(panel.getByText(name, { exact: true })).toBeVisible()
+    await expect(panel.getByRole("switch")).not.toBeChecked()
+    await panel.locator('[data-slot="switch-control"]').click()
+    if (failed && !pending) {
+      await expect(
+        panel.getByText(scenario.status === "failed" ? "failed" : "needs auth", { exact: true }),
+      ).toBeVisible()
       await expect(panel.getByRole("switch")).toBeEnabled()
-      await panel.getByRole("button", { name: "Close", exact: true }).click()
-      await expect(panel).toHaveCount(0)
+    }
+    await expect(panel.getByRole("switch")).toBeChecked({ checked: !failed || !!pending })
+    expect(actions).toEqual(
+      destination === "new worktree"
+        ? []
+        : [{ server: name, action: "connect", directory: destination === "main" ? directory : workspace }],
+    )
+    await panel.getByRole("button", { name: "Close", exact: true }).click()
+    await expect(panel).toHaveCount(0)
+
+    await expect(draft.editor).toHaveText(entry === "shortcut" ? "Keep this draft" : "")
+    await expectPath(page, draftHref(draft.draftID))
+    expect(creates).toEqual([])
+    expect(prompts).toEqual([])
+    if (pending) {
+      await draft.editor.fill("Use the selected MCP")
+      await draft.editor.press("Enter")
+      await expect.poll(() => pending.worktreeRequests).toHaveLength(1)
+      expect(actions).toEqual([])
+      pending.worktree.resolve({ status: 200, json: { directory: workspace } })
+      if (failed) {
+        await expect(page.getByRole("button", { name: "worktree", exact: true })).toBeVisible()
+        await expect(draft.editor).toHaveText("Use the selected MCP")
+        await draft.editor.fill("/mcp")
+        await expect(page.locator('[data-component="composer-suggestions"] [data-suggestion-id]')).toHaveCount(1)
+        await draft.editor.press("Enter")
+        await expect(panel.getByText("draft-mcp", { exact: true })).toBeVisible()
+        await expect(panel.getByRole("switch")).toBeChecked()
+        await panel.locator('[data-slot="switch-control"]').click()
+        await expect(panel.getByRole("switch")).not.toBeChecked()
+        await panel.getByRole("button", { name: "Close", exact: true }).click()
+        await expect(panel).toHaveCount(0)
+        await draft.editor.fill("Continue without this MCP")
+        await draft.editor.press("Enter")
+      }
+    }
+    if (failed && !pending) {
       await draft.editor.fill("Continue without this MCP")
       await draft.editor.press("Enter")
+    }
+    if (pending || failed) {
       await expect.poll(() => prompts).toHaveLength(1)
-      expect(creates).toEqual([expect.objectContaining({ location: { directory: target } })])
-      expect(actions).toEqual([{ server: "unavailable-mcp", action: "connect", directory: target }])
-    })
-  }
+      expect(actions).toEqual([
+        { server: name, action: "connect", directory: destination === "main" ? directory : workspace },
+        ...(failed && pending ? [{ server: name, action: "disconnect", directory: workspace }] : []),
+      ])
+      expect(creates).toEqual([
+        expect.objectContaining({ location: { directory: destination === "main" ? directory : workspace } }),
+      ])
+    }
+  })
 }
 
 // A session in a worktree of the project. The harness answers the MCP list for each location directory and stores

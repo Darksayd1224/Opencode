@@ -32,14 +32,21 @@ export const DialogSelectMcp: Component<{ directory?: string; controls?: McpCont
   )
 
   const toggle = useMcpToggle(directory)
+  // Creation can roll back to an existing worktree with choices still staged.
+  const staged = createMemo(() =>
+    props.controls && (props.controls.preview || Object.keys(props.controls.states).length > 0)
+      ? props.controls
+      : undefined,
+  )
   const enabled = (name: string) => {
     const connected = servers().find((server) => server.name === name)?.status.status === "connected"
 
-    return props.controls?.preview ? (props.controls.states[name] ?? connected) : connected
+    return staged()?.states[name] ?? connected
   }
   const change = (name: string) => {
-    if (props.controls?.preview) {
-      if (!props.controls.pending) props.controls.change(name, !enabled(name))
+    const controls = staged()
+    if (controls) {
+      if (!controls.pending) controls.change(name, !enabled(name))
       return
     }
     if (!toggle.isPending) toggle.mutate(name)
@@ -110,9 +117,7 @@ export const DialogSelectMcp: Component<{ directory?: string; controls?: McpCont
                     checked={enabled(i.name)}
                     disabled={
                       (!props.controls?.preview && status() === "pending") ||
-                      (props.controls?.preview
-                        ? props.controls.pending
-                        : toggle.isPending && toggle.variables === i.name)
+                      (staged()?.pending ?? (toggle.isPending && toggle.variables === i.name))
                     }
                     onChange={() => change(i.name)}
                   />
