@@ -84,6 +84,52 @@ for (const entry of ["slash command", "shortcut"] as const) {
   }
 }
 
+for (const destination of ["main", "existing worktree"] as const) {
+  for (const status of ["failed", "needs_auth"] as const) {
+    test(`sends the first message when MCP ${status} on ${destination}`, async ({ page }) => {
+      const actions: Parameters<NonNullable<MockServerConfig["onMcpAction"]>>[0][] = []
+      const creates: unknown[] = []
+      const prompts: unknown[] = []
+      const draft = await openDraft(page, {
+        name: "DraftMcpFailure",
+        directory,
+        project: { sandboxes: [workspace] },
+        provider: provider(),
+        mcp: [{ name: "unavailable-mcp", status: { status: "disabled" } }],
+        onMcpAction: (action) => {
+          actions.push(action)
+          return status === "failed" ? { status, error: "MCP is offline" } : { status }
+        },
+        onSessionCreate: (body) => void creates.push(body),
+        onPrompt: (prompt) => void prompts.push(prompt),
+      })
+      const target = destination === "main" ? directory : workspace
+      if (destination === "existing worktree") {
+        await page.getByRole("button", { name: "Local", exact: true }).click()
+        await page.getByRole("menuitem", { name: "Worktree", exact: true }).click()
+        await page.getByRole("menuitem", { name: "worktree", exact: true }).click()
+        await expect(page.getByRole("button", { name: "worktree", exact: true })).toBeVisible()
+      }
+      await draft.editor.fill("/mcp")
+      await expect(page.locator('[data-component="composer-suggestions"] [data-suggestion-id]')).toHaveCount(1)
+      await draft.editor.press("Enter")
+      const panel = page.getByRole("dialog", { name: "MCPs", exact: true })
+      await expect(panel.getByText("unavailable-mcp", { exact: true })).toBeVisible()
+      await panel.locator('[data-slot="switch-control"]').click()
+      await expect(panel.getByText(status === "failed" ? "failed" : "needs auth", { exact: true })).toBeVisible()
+      await expect(panel.getByRole("switch")).not.toBeChecked()
+      await expect(panel.getByRole("switch")).toBeEnabled()
+      await panel.getByRole("button", { name: "Close", exact: true }).click()
+      await expect(panel).toHaveCount(0)
+      await draft.editor.fill("Continue without this MCP")
+      await draft.editor.press("Enter")
+      await expect.poll(() => prompts).toHaveLength(1)
+      expect(creates).toEqual([expect.objectContaining({ location: { directory: target } })])
+      expect(actions).toEqual([{ server: "unavailable-mcp", action: "connect", directory: target }])
+    })
+  }
+}
+
 // A session in a worktree of the project. The harness answers the MCP list for each location directory and stores
 // connect/disconnect results per directory; `requests` records every MCP request and the directory it targeted.
 // The popover belongs to the summary extension; the dialog (Ctrl+;) is the app's own MCP toggle.

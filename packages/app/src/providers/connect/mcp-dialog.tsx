@@ -38,7 +38,7 @@ export const DialogSelectMcp: Component<{ directory?: string; controls?: McpCont
     return props.controls?.preview ? (props.controls.states[name] ?? connected) : connected
   }
   const change = (name: string) => {
-    if (props.controls) {
+    if (props.controls?.preview) {
       if (!props.controls.pending) props.controls.change(name, !enabled(name))
       return
     }
@@ -110,7 +110,9 @@ export const DialogSelectMcp: Component<{ directory?: string; controls?: McpCont
                     checked={enabled(i.name)}
                     disabled={
                       (!props.controls?.preview && status() === "pending") ||
-                      (props.controls ? props.controls.pending : toggle.isPending && toggle.variables === i.name)
+                      (props.controls?.preview
+                        ? props.controls.pending
+                        : toggle.isPending && toggle.variables === i.name)
                     }
                     onChange={() => change(i.name)}
                   />
