@@ -110,7 +110,7 @@ test("E2E: write-update cycle preserves only latest entry per session", async ()
   })
 })
 
-// --- Local additions (Task 4, opencode-crash-auto-resume) ---
+// Crash-resume protocol tests.
 // Protocol-level tests for the consume-then-dispatch order used by run.ts
 // (ActiveManifest.clear() runs before the candidate is returned for dispatch).
 
