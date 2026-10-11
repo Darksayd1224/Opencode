@@ -297,6 +297,7 @@ function MessageTimelineView(
         displayText: value?.displayText,
         comments: value?.comments ?? (parsed ? [parsed] : []),
         references: value?.attachments,
+        sessions: value?.sessions,
       }
     },
     actions: props.actions,

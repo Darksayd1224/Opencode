@@ -1,6 +1,11 @@
 import type { SessionMessageAssistant, SessionMessageAssistantTool, SessionMessageUser } from "@opencode/client/promise"
 import { Match, Switch, type ComponentProps } from "solid-js"
-import type { SessionUserActions, SessionUserAttachmentReference, SessionUserComment } from "../actions"
+import type {
+  SessionUserActions,
+  SessionUserAttachmentReference,
+  SessionUserComment,
+  SessionUserSessionReference,
+} from "../actions"
 import { AssistantReasoningContent, AssistantTextContent, CurrentUserMessageDisplay } from "./message-content"
 import {
   CurrentContextToolGroup,
@@ -10,7 +15,12 @@ import {
 } from "../tools/tool-renderer"
 import { currentToolError, currentToolInput, currentToolMetadata, currentToolOutput } from "./current-tool-state"
 
-export type { SessionUserActions, SessionUserAttachmentReference, SessionUserComment } from "../actions"
+export type {
+  SessionUserActions,
+  SessionUserAttachmentReference,
+  SessionUserComment,
+  SessionUserSessionReference,
+} from "../actions"
 
 export { SessionShellMessage } from "../tools/tool-renderer"
 
@@ -22,6 +32,7 @@ export function SessionUserMessage(props: {
   displayText?: string
   comments?: SessionUserComment[]
   references?: SessionUserAttachmentReference[]
+  sessions?: SessionUserSessionReference[]
   historicalAgent: string
   historicalModel: SessionMessageAssistant["model"]
   actions?: SessionUserActions
@@ -33,6 +44,7 @@ export function SessionUserMessage(props: {
       text={props.displayText ?? props.message.text}
       comments={props.comments}
       references={props.references}
+      sessions={props.sessions}
       agent={props.historicalAgent}
       model={props.historicalModel}
       actions={props.actions}

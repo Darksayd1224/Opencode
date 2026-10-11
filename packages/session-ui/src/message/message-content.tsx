@@ -1,11 +1,13 @@
 import { createEffect, createMemo, createSignal, For, onCleanup, Show, type ComponentProps, type JSX } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useData } from "../context"
+import { useMarkdown } from "../context/markdown"
 import { useDialog } from "@opencode/ui/context/dialog"
 import { useI18n } from "@opencode/ui/context/i18n"
 import { Markdown } from "../components/markdown"
 import { ImagePreview } from "@opencode/ui/image-preview"
 import { getFilename } from "@opencode/util/path"
+import { isFallbackTitle } from "@opencode/util/session-title-fallback"
 import { AttachmentCard } from "./attachment-card"
 import { CommentCard } from "./comment-card"
 import { TimelineSeparator } from "../components/timeline-separator"
@@ -26,7 +28,12 @@ import type {
   SessionMessageCompaction,
   SessionMessageUser,
 } from "@opencode/client/promise"
-import type { SessionUserActions, SessionUserAttachmentReference, SessionUserComment } from "../actions"
+import type {
+  SessionUserActions,
+  SessionUserAttachmentReference,
+  SessionUserComment,
+  SessionUserSessionReference,
+} from "../actions"
 import { attached, typeLabel } from "../components/message-file"
 
 export async function writeClipboard(text: string): Promise<boolean> {
@@ -254,6 +261,7 @@ export function CurrentUserMessageDisplay(props: {
   actions?: SessionUserActions
   comments?: SessionUserComment[]
   references?: SessionUserAttachmentReference[]
+  sessions?: SessionUserSessionReference[]
 }) {
   const data = useData()
   const dialog = useDialog()
@@ -264,6 +272,7 @@ export function CurrentUserMessageDisplay(props: {
   const waiting = createMemo(() => status() === "steering" || status() === "stranded")
   const attachments = createMemo(() => (props.message.files ?? []).filter(attached))
   const references = createMemo(() => props.references ?? [])
+  const sessions = createMemo(() => props.sessions ?? [])
   const inlineFiles = createMemo(() => (props.message.files ?? []).filter((file) => !!file.mention))
   const agents = createMemo(() => props.message.agents ?? [])
   const comments = createMemo(() => props.comments ?? [])
@@ -368,7 +377,12 @@ export function CurrentUserMessageDisplay(props: {
       >
         <div data-slot="user-message-body">
           <div data-slot="user-message-text" dir="auto" data-comments={comments().length > 0 ? "true" : undefined}>
-            <CurrentHighlightedText text={props.text} files={inlineFiles()} agents={agents()} />
+            <CurrentHighlightedText
+              text={props.text}
+              files={inlineFiles()}
+              agents={agents()}
+              sessions={sessions()}
+            />
             <Show when={comments().length > 0}>
               <UserMessageComments comments={comments()} bounded />
             </Show>
@@ -449,20 +463,59 @@ export function CurrentUserMessageDisplay(props: {
   )
 }
 
+const bareSessionID = /(?<![A-Za-z0-9_])ses_[A-Za-z0-9]{26}(?![A-Za-z0-9_])/g
+
 function CurrentHighlightedText(props: {
   text: string
   files: PromptFileAttachment[]
   agents: PromptAgentAttachment[]
+  sessions?: SessionUserSessionReference[]
 }) {
+  const data = useData()
+  const markdown = useMarkdown()
+
   const segments = createMemo(() => {
-    const references = [
+    let searchFrom = 0
+
+    const sessionMentions = (props.sessions ?? []).flatMap((session) => {
+      const mention = session.mention
+
+      if (!mention.text) return []
+
+      const exact =
+        mention.start >= searchFrom &&
+        mention.end >= mention.start &&
+        props.text.slice(mention.start, mention.end) === mention.text
+
+      const start = exact ? mention.start : props.text.indexOf(mention.text, searchFrom)
+
+      if (start < 0) return []
+      const end = start + mention.text.length
+      searchFrom = end
+
+      return [{ start, end, type: "session" as const, sessionID: session.id }]
+    })
+
+    const explicit = [
       ...props.files.flatMap((file) =>
         file.mention ? [{ start: file.mention.start, end: file.mention.end, type: "file" as const }] : [],
       ),
       ...props.agents.flatMap((agent) =>
         agent.mention ? [{ start: agent.mention.start, end: agent.mention.end, type: "agent" as const }] : [],
       ),
-    ].sort((a, b) => a.start - b.start)
+      ...sessionMentions,
+    ]
+
+    const bare = [...props.text.matchAll(bareSessionID)].flatMap((match) => {
+      const start = match.index
+      const end = start + match[0].length
+
+      if (explicit.some((ref) => start < ref.end && end > ref.start)) return []
+
+      return [{ start, end, type: "session" as const, sessionID: match[0] }]
+    })
+
+    const references = [...explicit, ...bare].sort((a, b) => a.start - b.start)
 
     const result: HighlightSegment[] = []
     let last = 0
@@ -470,7 +523,11 @@ function CurrentHighlightedText(props: {
       if (reference.start < last) return
 
       if (reference.start > last) result.push({ text: props.text.slice(last, reference.start) })
-      result.push({ text: props.text.slice(reference.start, reference.end), type: reference.type })
+      result.push({
+        text: props.text.slice(reference.start, reference.end),
+        type: reference.type,
+        sessionID: "sessionID" in reference ? reference.sessionID : undefined,
+      })
       last = reference.end
     })
 
@@ -479,21 +536,52 @@ function CurrentHighlightedText(props: {
     return result
   })
 
+  const openSession = (sessionID: string) => (markdown?.openSession ?? data.navigateToSession)?.(sessionID)
+
   return (
     <For each={segments()}>
-      {(segment) => (
-        <span data-highlight={segment.type}>
-          <Show when={segment.type && segment.text.startsWith("@")} fallback={segment.text}>
-            <span data-slot="user-message-mention-prefix">@</span>
-            {segment.text.slice(1)}
-          </Show>
-        </span>
-      )}
+      {(segment) => {
+        if (segment.type === "session" && segment.sessionID) {
+          const label = createMemo(() => {
+            if (!segment.text.startsWith("@")) return segment.text
+            const live = data.store.session.find((item) => item.id === segment.sessionID)?.title
+
+            return live && !isFallbackTitle(live) ? `@${live}` : segment.text
+          })
+
+          return (
+            <button
+              type="button"
+              class="markdown-session-link"
+              data-highlight="session"
+              data-session-id={segment.sessionID}
+              onClick={(event) => {
+                event.stopPropagation()
+                openSession(segment.sessionID!)
+              }}
+            >
+              <Show when={label().startsWith("@")} fallback={label()}>
+                <span data-slot="user-message-mention-prefix">@</span>
+                {label().slice(1)}
+              </Show>
+            </button>
+          )
+        }
+
+        return (
+          <span data-highlight={segment.type}>
+            <Show when={segment.type && segment.text.startsWith("@")} fallback={segment.text}>
+              <span data-slot="user-message-mention-prefix">@</span>
+              {segment.text.slice(1)}
+            </Show>
+          </span>
+        )
+      }}
     </For>
   )
 }
 
-type HighlightSegment = { text: string; type?: "file" | "agent" }
+type HighlightSegment = { text: string; type?: "file" | "agent" | "session"; sessionID?: string }
 
 /** A compaction the server admitted but has not started, drawn as the divider a started one opens with. */
 export function SessionCompactionQueued() {
