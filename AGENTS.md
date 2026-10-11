@@ -3,6 +3,7 @@
 - Keep runtime dependencies directed from Schema to Core and Protocol, then from Core and Protocol to Server. Client runtime code may depend on Schema and Protocol but never Core or Server; `sdk-next` composes Client, Core, and Server.
 - The default branch in this fork is `main`, built from upstream release tags (currently `v1.18.34`), not upstream's `dev`. Use `main` or `origin/main` for diffs.
 - Pull future upstream changes via the `upstream` remote (`sst/opencode`); don't assume a local `dev` ref exists.
+- Never push commits directly to `main`. Always work on a feature branch and open a pull request, even for small or trivial changes; let CI/review happen before merging.
 
 ## Branch Names
 
