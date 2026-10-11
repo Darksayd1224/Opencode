@@ -10,12 +10,12 @@ import { SessionMessage } from "@opencode/schema/session-message"
 import { Cause, Deferred, Effect, Exit, Fiber } from "effect"
 import { testEffect } from "../lib/effect"
 import { permissionLayer } from "../lib/permission"
-import { PluginTestLayer, pluginTestLayer } from "./fixture"
+import { PluginTestLayer, makePluginTestLayer } from "./fixture"
 
 const it = testEffect(PluginTestLayer)
 const assertions: Permission.AssertInput[] = []
 const permissionIt = testEffect(
-  pluginTestLayer(
+  makePluginTestLayer(
     permissionLayer({
       assert: (input) => Effect.sync(() => void assertions.push(input)),
     }),

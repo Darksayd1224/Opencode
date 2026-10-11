@@ -8,14 +8,14 @@ import { Session } from "@opencode/schema/session"
 import { Cause, Deferred, Effect, Exit, Fiber } from "effect"
 import { testEffect } from "../lib/effect"
 import { permissionLayer } from "../lib/permission"
-import { pluginTestLayer } from "./fixture"
+import { makePluginTestLayer } from "./fixture"
 
 let assertion: Deferred.Deferred<Permission.AssertInput>
 let decision: Effect.Effect<void, Permission.Error> = Effect.void
 let assertions = 0
 
 const it = testEffect(
-  pluginTestLayer(
+  makePluginTestLayer(
     permissionLayer({
       assert: (input) =>
         Effect.sync(() => assertions++).pipe(

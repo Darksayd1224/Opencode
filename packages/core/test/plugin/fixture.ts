@@ -3,6 +3,8 @@ import { AISDK } from "@opencode/core/aisdk"
 import { Command } from "@opencode/core/command"
 import { Config } from "@opencode/core/config"
 import { Credential } from "@opencode/core/credential"
+import { Database } from "@opencode/core/database/database"
+import { FileAccess } from "@opencode/core/file-access"
 import { LayerNodePlatform } from "@opencode/util/effect/app-node-platform"
 import { AppProcess } from "@opencode/util/process"
 import { LayerNode } from "@opencode/util/effect/layer-node"
@@ -53,7 +55,9 @@ const npmLayer = Layer.succeed(
 
 const generateLayer = Layer.succeed(Generate.Service, Generate.Service.of({ text: () => Effect.succeed("") }))
 
-const defaultPermissionLayer = Layer.succeed(
+const configLayer = Config.testLayer()
+
+const permissionLayer = Layer.succeed(
   Permission.Service,
   Permission.Service.of({
     close: Effect.void,
@@ -66,7 +70,7 @@ const defaultPermissionLayer = Layer.succeed(
   }),
 )
 
-export const pluginTestLayer = (permissionLayer = defaultPermissionLayer) =>
+export const makePluginTestLayer = (permission = permissionLayer) =>
   AppNodeBuilder.build(
     LayerNode.group([
       AppProcess.node,
@@ -75,6 +79,9 @@ export const pluginTestLayer = (permissionLayer = defaultPermissionLayer) =>
       Location.node,
       Npm.node,
       Credential.node,
+      Config.node,
+      Database.node,
+      FileAccess.node,
       Bus.node,
       Form.node,
       Generate.node,
@@ -108,11 +115,11 @@ export const pluginTestLayer = (permissionLayer = defaultPermissionLayer) =>
     [
       Location.node.replace(tempLocationLayer),
       Npm.node.replace(npmLayer),
-      Config.node.replace(Config.testLayer()),
+      Config.node.replace(configLayer),
       Mcp.node.replace(emptyMcpLayer),
       Generate.node.replace(generateLayer),
-      Permission.node.replace(permissionLayer),
+      Permission.node.replace(permission),
     ],
-  )
+  ).pipe(Layer.provideMerge(configLayer))
 
-export const PluginTestLayer = pluginTestLayer()
+export const PluginTestLayer = makePluginTestLayer()
