@@ -83,7 +83,7 @@ export const effectCmd = <Args, A>(opts: EffectCmdOpts<Args, A>) =>
       }
       const { InstanceStore } = await import("@/project/instance-store")
       const { InstanceRef } = await import("@/effect/instance-ref")
-      const directory = opts.directory?.(args) ?? process.cwd()
+      const directory = opts.directory?.(args) ?? process.env.OPENCODE_WRAPPER_CWD ?? process.cwd()
       const { store, ctx } = await AppRuntime.runPromise(
         InstanceStore.Service.use((store) => store.load({ directory }).pipe(Effect.map((ctx) => ({ store, ctx })))),
       )

@@ -123,6 +123,8 @@ async function toolError(part: ToolPart) {
   }
 }
 
+const wrapperCwd = () => process.env.OPENCODE_WRAPPER_CWD ?? process.cwd()
+
 export const RunCommand = effectCmd({
   command: "run [message..]",
   describe: "run opencode with a message",
@@ -131,7 +133,7 @@ export const RunCommand = effectCmd({
   instance: (args) => !args.attach,
   // For --dir without --attach, load instance for the resolved target dir.
   // The handler also chdirs (preserving the legacy order: chdir → file resolution).
-  directory: (args) => (args.dir && !args.attach ? path.resolve(process.cwd(), args.dir) : process.cwd()),
+  directory: (args) => (args.dir && !args.attach ? path.resolve(wrapperCwd(), args.dir) : wrapperCwd()),
   builder: (yargs: Argv) =>
     yargs
       .positional("message", {
@@ -330,7 +332,7 @@ export const RunCommand = effectCmd({
 
       const replay = args.replay === false ? false : args.replay || args["replay-limit"] !== undefined
 
-      const root = Filesystem.resolve(process.env.PWD ?? process.cwd())
+      const root = Filesystem.resolve(process.env.OPENCODE_WRAPPER_CWD ?? process.env.PWD ?? process.cwd())
       const directory = (() => {
         if (!args.dir) return args.attach ? undefined : root
         if (args.attach) return args.dir

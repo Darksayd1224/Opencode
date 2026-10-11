@@ -524,6 +524,25 @@ describe("HttpApi workspace routing middleware", () => {
     }),
   )
 
+  it.live("uses wrapper cwd when request has no directory hint", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdirScoped()
+      const previous = process.env.OPENCODE_WRAPPER_CWD
+      process.env.OPENCODE_WRAPPER_CWD = dir
+      try {
+        yield* serveProbe
+
+        const response = yield* HttpClient.get("/probe")
+
+        expect(response.status).toBe(200)
+        expect(yield* response.json).toEqual({ directory: dir, workspaceID: null })
+      } finally {
+        if (previous === undefined) delete process.env.OPENCODE_WRAPPER_CWD
+        else process.env.OPENCODE_WRAPPER_CWD = previous
+      }
+    }),
+  )
+
   it.live("routes local workspace requests through WorkspaceRouteContext", () =>
     Effect.gen(function* () {
       const dir = yield* tmpdirScoped({ git: true })
