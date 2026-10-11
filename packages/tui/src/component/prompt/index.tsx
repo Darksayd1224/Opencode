@@ -33,8 +33,11 @@ import { createStore, produce, unwrap } from "solid-js/store"
 import { usePromptHistory, type PromptInfo } from "../../prompt/history"
 import { computePromptTraits } from "../../prompt/traits"
 import { expandPastedTextPlaceholders, expandTrackedPastedText } from "../../prompt/part"
+import { pasteLabel, pasteSummary } from "../../prompt/paste"
+import { copyPromptParts, createPromptUndo, PromptUndoDepthDefault, type PromptUndoState } from "../../prompt/undo"
 import { usePromptStash } from "../../prompt/stash"
 import { DialogStash } from "../dialog-stash"
+import { DialogPaste } from "../dialog-paste"
 import { type AutocompleteRef, Autocomplete } from "./autocomplete"
 import { useRenderer, useTerminalDimensions, type JSX } from "@opentui/solid"
 import type { AssistantMessage, FilePart, UserMessage } from "@opencode-ai/sdk/v2"
@@ -57,6 +60,7 @@ import { usePromptWorkspace } from "./workspace"
 import { usePromptMove } from "./move"
 import { readLocalAttachment } from "./local-attachment"
 import { useLocation } from "../../context/location"
+import { copyText, onClick } from "../../ui/click"
 
 registerOpencodeSpinner()
 
@@ -73,6 +77,11 @@ export type PromptProps = {
     normal?: string[]
     shell?: string[]
   }
+}
+
+// Replace CRLF first, then any remaining CR.
+function normalizeLineEndings(text: string) {
+  return text.replace(/\r\n/g, "\n").replace(/\r/g, "\n")
 }
 
 function pastedFilepath(value: string, platform: string) {
@@ -139,6 +148,10 @@ function formatEditorContext(selection: EditorSelection) {
 }
 
 let stashed: { prompt: PromptInfo; cursor: number } | undefined
+let undoDepth = PromptUndoDepthDefault
+// Shared by every prompt so that undo survives the remount after a route change, which is what
+// lets undo after a submit bring back what was sent.
+const promptUndo = createPromptUndo({ depth: () => undoDepth })
 
 export function Prompt(props: PromptProps) {
   let input: TextareaRenderable
@@ -624,6 +637,8 @@ export function Prompt(props: PromptProps) {
     }
   })
 
+  onMount(() => queueMicrotask(settleUndo))
+
   onCleanup(() => {
     if (store.prompt.input) {
       stashed = { prompt: unwrap(store.prompt), cursor: input.cursorOffset }
@@ -654,6 +669,53 @@ export function Prompt(props: PromptProps) {
       }),
     }
   })
+
+  // Edits are recorded once the change that caused them has finished, so that text, parts and caret
+  // that are updated one after another are seen together. The text and parts the prompt sets
+  // itself while mounting, and on undo and redo, are not edits.
+  let undoApplying = true
+  let undoObserveQueued = false
+  undoDepth = tuiConfig.prompt?.undo_depth ?? PromptUndoDepthDefault
+
+  function undoState(): PromptUndoState {
+    return {
+      input: store.prompt.input,
+      parts: copyPromptParts(unwrap(store.prompt.parts)),
+      mode: store.mode,
+      cursor: input.cursorOffset,
+    }
+  }
+
+  function observeUndo() {
+    if (undoObserveQueued) return
+    undoObserveQueued = true
+    queueMicrotask(() => {
+      undoObserveQueued = false
+      if (undoApplying || !input || input.isDestroyed) return
+      promptUndo.observe(undoState())
+    })
+  }
+
+  function settleUndo() {
+    undoApplying = false
+    if (!input || input.isDestroyed) return
+    promptUndo.sync(undoState())
+  }
+
+  function stepUndo(direction: "undo" | "redo") {
+    if (!input || input.isDestroyed) return
+    if (!undoApplying) promptUndo.observe(undoState())
+    const current = undoState()
+    const target = direction === "undo" ? promptUndo.undo(current) : promptUndo.redo(current)
+    if (!target) return
+    undoApplying = true
+    input.setText(target.input)
+    setStore("prompt", { input: target.input, parts: copyPromptParts(target.parts) })
+    setStore("mode", target.mode)
+    restoreExtmarksFromParts(store.prompt.parts)
+    input.cursorOffset = target.cursor
+    queueMicrotask(settleUndo)
+  }
 
   function restoreExtmarksFromParts(parts: PromptInfo["parts"]) {
     input.extmarks.clear()
@@ -802,6 +864,19 @@ export function Prompt(props: PromptProps) {
       target: inputTarget,
       enabled: inputTarget() !== undefined && !props.disabled,
       bindings: tuiConfig.keybinds.get("prompt.paste"),
+    }
+  })
+
+  // Replaces the textarea's own undo and redo, which know nothing of the prompt's attachments and
+  // pasted text, and lose everything on submit.
+  useBindings(() => {
+    return {
+      target: inputTarget,
+      enabled: inputTarget() !== undefined && !props.disabled,
+      commands: [
+        { name: "input.undo", title: "Undo in prompt", category: "Prompt", run: () => stepUndo("undo") },
+        { name: "input.redo", title: "Redo in prompt", category: "Prompt", run: () => stepUndo("redo") },
+      ],
     }
   })
 
@@ -1146,12 +1221,12 @@ export function Prompt(props: PromptProps) {
     return true
   }
 
-  function pasteText(text: string, virtualText: string) {
+  function pasteText(text: string, virtualText: string, after = " ") {
     const currentOffset = input.cursorOffset
     const extmarkStart = currentOffset
     const extmarkEnd = extmarkStart + promptOffsetWidth(virtualText)
 
-    input.insertText(virtualText + " ")
+    input.insertText(virtualText + after)
 
     const extmarkId = input.extmarks.create({
       start: extmarkStart,
@@ -1203,16 +1278,17 @@ export function Prompt(props: PromptProps) {
       }
     }
 
-    const lineCount = (pastedContent.match(/\n/g)?.length ?? 0) + 1
-    if (
-      (lineCount >= 3 || pastedContent.length > 150) &&
-      kv.get("paste_summary_enabled", !sync.data.config.experimental?.disable_paste_summary)
-    ) {
-      pasteText(pastedContent, `[Pasted ~${lineCount} lines]`)
+    const summary = pasteSummary(pastedContent, tuiConfig.prompt?.paste_summary)
+    if (summary && kv.get("paste_summary_enabled", !sync.data.config.experimental?.disable_paste_summary)) {
+      pasteText(pastedContent, summary)
       return
     }
 
-    input.insertText(normalizedText)
+    insertPastedText(normalizedText)
+  }
+
+  function insertPastedText(text: string) {
+    input.insertText(text)
 
     setTimeout(() => {
       if (!input || input.isDestroyed) return
@@ -1267,6 +1343,63 @@ export function Prompt(props: PromptProps) {
       }),
     )
     return
+  }
+
+  // The paste placeholder the caret is on, as a click inside one leaves it.
+  function pasteAtCaret() {
+    const offset = input.cursorOffset
+    return input.extmarks.getAllForTypeId(promptPartTypeId).find((extmark) => {
+      if (offset < extmark.start || offset >= extmark.end) return false
+      const partIndex = store.extmarkToPartIndex.get(extmark.id)
+      return partIndex !== undefined && store.prompt.parts[partIndex]?.type === "text"
+    })
+  }
+
+  function openPaste() {
+    const extmark = pasteAtCaret()
+    if (!extmark) return false
+    const part = store.prompt.parts[store.extmarkToPartIndex.get(extmark.id)!]
+    if (part?.type !== "text") return false
+    input.cursorOffset = extmark.end
+    const original = part.text
+    let text = original
+    let inline = false
+    dialog.replace(
+      () => <DialogPaste text={original} onChange={(value) => (text = value)} onInline={() => (inline = true)} />,
+      () => {
+        if (inline || text !== original) replacePaste(extmark.id, text, inline)
+      },
+    )
+    return true
+  }
+
+  // Writes an edited paste back: its text, and its label when the text changed it. Inline, or an
+  // emptied paste, replaces the placeholder with the text itself.
+  function replacePaste(extmarkId: number, text: string, inline: boolean) {
+    if (!input || input.isDestroyed) return
+    const extmark = input.extmarks.get(extmarkId)
+    const partIndex = store.extmarkToPartIndex.get(extmarkId)
+    const part = partIndex === undefined ? undefined : store.prompt.parts[partIndex]
+    if (!extmark || partIndex === undefined || part?.type !== "text" || !part.source) return
+    const content = normalizeLineEndings(text)
+    const label = pasteLabel(content, tuiConfig.prompt?.paste_summary)
+    if (!inline && content && label === part.source.text.value) {
+      setStore(
+        produce((draft) => {
+          const target = draft.prompt.parts[partIndex]
+          if (target?.type === "text") target.text = content
+        }),
+      )
+      observeUndo()
+      return
+    }
+    const start = input.editBuffer.offsetToPosition(extmark.start)
+    const end = input.editBuffer.offsetToPosition(extmark.end)
+    if (!start || !end) return
+    input.editBuffer.deleteRange(start.row, start.col, end.row, end.col)
+    input.cursorOffset = extmark.start
+    if (inline || !content) insertPastedText(content)
+    else pasteText(content, label, "")
   }
 
   function clearPrompt() {
@@ -1343,6 +1476,10 @@ export function Prompt(props: PromptProps) {
     }
   })
   const maxHeight = createMemo(() => tuiConfig.prompt?.max_height ?? Math.max(6, Math.floor(dimensions().height / 3)))
+  // A click on a paste placeholder opens its text; the press has already put the caret there.
+  const pasteClick = onClick(() => {
+    if (!props.disabled) openPaste()
+  })
   const moveLabelWidth = createMemo(() => Math.max(12, Math.min(44, dimensions().width - 48)))
 
   return (
@@ -1380,8 +1517,12 @@ export function Prompt(props: PromptProps) {
                 auto()?.onInput(value)
                 syncExtmarksWithPromptParts()
                 setCursorVersion((value) => value + 1)
+                observeUndo()
               }}
-              onCursorChange={() => setCursorVersion((value) => value + 1)}
+              onCursorChange={() => {
+                setCursorVersion((value) => value + 1)
+                observeUndo()
+              }}
               onKeyDown={(e: { preventDefault(): void }) => {
                 if (props.disabled) {
                   e.preventDefault()
@@ -1435,7 +1576,11 @@ export function Prompt(props: PromptProps) {
                   if (tuiConfig.cursor) input.cursorStyle = tuiConfig.cursor
                 }, 0)
               }}
-              onMouseDown={(r: MouseEvent) => r.target?.focus()}
+              onMouseDown={(r: MouseEvent) => {
+                r.target?.focus()
+                pasteClick.onMouseDown(r)
+              }}
+              onMouseUp={pasteClick.onMouseUp}
               focusedBackgroundColor={theme.backgroundElement}
               cursorColor={props.disabled ? theme.backgroundElement : theme.text}
               cursorStyle={tuiConfig.cursor}
@@ -1446,7 +1591,10 @@ export function Prompt(props: PromptProps) {
                 <Show when={local.agent.current()} fallback={<box height={1} />}>
                   {(agent) => (
                     <>
-                      <text fg={fadeColor(highlight(), agentMetaAlpha())}>
+                      <text
+                        fg={fadeColor(highlight(), agentMetaAlpha())}
+                        {...onClick(() => keymap.dispatchCommand("agent.list"))}
+                      >
                         {store.mode === "shell" ? "Shell" : Locale.titlecase(agent().name)}
                       </text>
                       <Show when={store.mode === "normal" && local.permission.mode === "auto"}>
@@ -1455,16 +1603,18 @@ export function Prompt(props: PromptProps) {
                       <Show when={store.mode === "normal"}>
                         <box flexDirection="row" gap={1}>
                           <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>·</text>
-                          <text
-                            flexShrink={0}
-                            fg={fadeColor(leader() ? theme.textMuted : theme.text, modelMetaAlpha())}
-                          >
-                            {local.model.parsed().model}
-                          </text>
-                          <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>{currentProviderLabel()}</text>
+                          <box flexDirection="row" gap={1} {...onClick(() => keymap.dispatchCommand("model.list"))}>
+                            <text
+                              flexShrink={0}
+                              fg={fadeColor(leader() ? theme.textMuted : theme.text, modelMetaAlpha())}
+                            >
+                              {local.model.parsed().model}
+                            </text>
+                            <text fg={fadeColor(theme.textMuted, modelMetaAlpha())}>{currentProviderLabel()}</text>
+                          </box>
                           <Show when={showVariant()}>
                             <text fg={fadeColor(theme.textMuted, variantMetaAlpha())}>·</text>
-                            <text>
+                            <text {...onClick(() => keymap.dispatchCommand("variant.list"))}>
                               <span style={{ fg: fadeColor(theme.warning, variantMetaAlpha()), bold: true }}>
                                 {local.model.variant.current()}
                               </span>
@@ -1584,7 +1734,10 @@ export function Prompt(props: PromptProps) {
                     })()}
                   </box>
                 </box>
-                <text fg={store.interrupt > 0 ? theme.primary : theme.text}>
+                <text
+                  fg={store.interrupt > 0 ? theme.primary : theme.text}
+                  {...onClick(() => keymap.dispatchCommand("session.interrupt"))}
+                >
                   esc{" "}
                   <span style={{ fg: store.interrupt > 0 ? theme.primary : theme.textMuted }}>
                     {store.interrupt > 0 ? "again to interrupt" : "interrupt"}
@@ -1646,7 +1799,12 @@ export function Prompt(props: PromptProps) {
               {props.hint ?? (
                 <Show when={props.sessionID} fallback={<text />}>
                   <box marginLeft={1}>
-                    <text fg={theme.textMuted}>{location()?.directory ?? paths.cwd}</text>
+                    <text
+                      fg={theme.textMuted}
+                      {...onClick(() => copyText(clipboard, toast.show, location()?.directory ?? paths.cwd))}
+                    >
+                      {location()?.directory ?? paths.cwd}
+                    </text>
                   </box>
                 </Show>
               )}
@@ -1664,18 +1822,22 @@ export function Prompt(props: PromptProps) {
                   <Switch>
                     <Match when={usage()}>
                       {(item) => (
-                        <text fg={theme.textMuted} wrapMode="none">
+                        <text
+                          fg={theme.textMuted}
+                          wrapMode="none"
+                          {...onClick(() => keymap.dispatchCommand("opencode.status"))}
+                        >
                           {[item().context, item().cost].filter(Boolean).join(" · ")}
                         </text>
                       )}
                     </Match>
                     <Match when={true}>
-                      <text fg={theme.text}>
+                      <text fg={theme.text} {...onClick(() => keymap.dispatchCommand("agent.cycle"))}>
                         {agentShortcut()} <span style={{ fg: theme.textMuted }}>agents</span>
                       </text>
                     </Match>
                   </Switch>
-                  <text fg={theme.text}>
+                  <text fg={theme.text} {...onClick(() => keymap.dispatchCommand("command.palette.show"))}>
                     {paletteShortcut()} <span style={{ fg: theme.textMuted }}>commands</span>
                   </text>
                 </Match>
