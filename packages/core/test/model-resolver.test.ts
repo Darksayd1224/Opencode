@@ -1,9 +1,10 @@
 import { describe, expect } from "bun:test"
-import { LLM, LanguageModel, Message } from "@opencode/ai"
+import { LLM, LanguageModel, Message, ReasoningPart, ToolCallPart } from "@opencode/ai"
 import { OpenAIChat } from "@opencode/ai/protocols"
 import { compileRequest } from "@opencode/ai/route/client"
-import { ConfigProvider, Effect, Layer } from "effect"
-import { Headers } from "effect/unstable/http"
+import { LLMClient, RequestExecutor } from "@opencode/ai/route"
+import { ConfigProvider, Effect, Layer, Schema } from "effect"
+import { Headers, HttpClientRequest, HttpClientResponse } from "effect/unstable/http"
 import { AISDKNative } from "@opencode/core/aisdk-native"
 import { Credential } from "@opencode/core/credential"
 import { Integration } from "@opencode/core/integration"
@@ -496,6 +497,78 @@ describe("ModelResolver", () => {
       expect(prepared.body).not.toHaveProperty("max_tokens")
       expect(resolved.route.endpoint.baseURL).toBe("https://compatible.example/v1")
       expect(resolved.route.defaults.http?.body).toEqual({})
+    }),
+  )
+
+  it.effect("sends migrated chat template options on ordinary and tool-followup requests", () =>
+    Effect.gen(function* () {
+      const catalog = model(Provider.aisdk("@ai-sdk/openai-compatible"), {
+        compatibility: { reasoningField: "reasoning_content" },
+        settings: {
+          apiKey: "settings-secret",
+          baseURL: "https://compatible.example/v1",
+          chat_template_kwargs: { enable_thinking: true, preserve_thinking: false },
+        },
+        variants: [
+          {
+            id: VariantID.make("low"),
+            settings: { chat_template_kwargs: { reasoning_effort: "low" } },
+          },
+        ],
+      })
+      const resolved = yield* ModelResolver.resolveModel(catalog, VariantID.make("low"))
+      const histories = [
+        [Message.user("Describe the fixture.")],
+        [
+          Message.user("Read the fixture and summarize it."),
+          Message.assistant([
+            ReasoningPart.make({ type: "reasoning", text: "I should read the fixture first." }),
+            ToolCallPart.make({ id: "read_1", name: "read", input: { path: "notes.txt" } }),
+          ]),
+          Message.tool({ id: "read_1", name: "read", result: "Status: ready" }),
+        ],
+        [Message.user("Describe the fixture."), Message.assistant("It is ready."), Message.user("Explain why.")],
+      ]
+      for (const messages of histories) {
+        const response = yield* LLMClient.generate(LLM.request({ model: resolved, messages }), {
+          http: (request) =>
+            Effect.gen(function* () {
+              const web = yield* HttpClientRequest.toWeb(request)
+              const body = Schema.decodeUnknownSync(
+                Schema.fromJsonString(Schema.Record(Schema.String, Schema.Unknown)),
+              )(yield* Effect.promise(() => web.text()))
+              expect(body).toMatchObject({
+                chat_template_kwargs: { enable_thinking: true, preserve_thinking: false, reasoning_effort: "low" },
+                custom_extension: { enabled: true },
+              })
+              expect(body).not.toHaveProperty("apiKey")
+              expect(body).not.toHaveProperty("baseURL")
+              if (messages.length === 3 && messages[1].role === "assistant" && messages[2].role === "tool") {
+                expect(body.messages).toMatchObject([
+                  { role: "user" },
+                  {
+                    role: "assistant",
+                    reasoning_content: "I should read the fixture first.",
+                    tool_calls: [{ id: "read_1", function: { name: "read" } }],
+                  },
+                  { role: "tool", tool_call_id: "read_1", content: JSON.stringify("Status: ready") },
+                ])
+              }
+              return HttpClientResponse.fromWeb(
+                request,
+                new Response(
+                  'data: {"choices":[{"delta":{"reasoning_content":"I have the fixture."},"finish_reason":null}]}\n\n' +
+                    'data: {"choices":[{"delta":{"content":"The fixture is ready."},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
+                  { headers: { "content-type": "text/event-stream" } },
+                ),
+              )
+            }),
+        }).pipe(Effect.provide(LLMClient.layer.pipe(Layer.provide(RequestExecutor.fetchLayer))))
+        expect(response.text).toBe("The fixture is ready.")
+        expect(response.events).toContainEqual(
+          expect.objectContaining({ type: "reasoning-delta", text: "I have the fixture." }),
+        )
+      }
     }),
   )
 
