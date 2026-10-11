@@ -67,6 +67,7 @@ These parts of the screen act when you click them. Where a keybind or slash comm
 
 | Element | Where | Action |
 | --- | --- | --- |
+| A pasted-text placeholder, such as `[Pasted ~12 lines]` | In the prompt | Opens the pasted text to read and edit. See [Paste summary](#paste-summary) |
 | Agent name | Below the prompt | Opens the agent picker (`/agents`) |
 | Model and provider | Below the prompt | Opens the model picker (`/models`) |
 | Variant | Below the prompt, when one is selected | Opens the variant picker (`/variants`) |
@@ -467,6 +468,8 @@ A paste of three lines or more, or of more than 150 characters, goes into the pr
 - `excerpt` - How many characters `{excerpt}` shows before it is cut with `…`. Defaults to `30`.
 
 With the example above, a 12-line stack trace that starts with `TypeError: Cannot read properties of undefined` shows as `[Pasted 12 lines, 1834 B: TypeError: Cannot read properties of und…]`. **Disable paste summary** in the command palette turns summarizing off for every paste, and **Enable paste summary** turns it back on.
+
+Click a placeholder to see the text behind it. It opens in the same editor as the prompt, with the same keys, mouse caret placement and undo; <kbd>enter</kbd> adds a line. Press <kbd>esc</kbd> to save and close: the placeholder keeps the edited text, and its label is redone from `format` when the text changed it, such as a new line count. **Inline** replaces the placeholder with the text itself, as if it had been pasted without one. Saving empty text removes the placeholder. Undo in the prompt takes back either change.
 
 ### Undo in the prompt
 
