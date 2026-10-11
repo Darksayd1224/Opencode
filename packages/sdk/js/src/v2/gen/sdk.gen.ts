@@ -217,6 +217,8 @@ import type {
   SessionSummarizeResponses,
   SessionTodoErrors,
   SessionTodoResponses,
+  SessionUnqueueErrors,
+  SessionUnqueueResponses,
   SessionUnrevertErrors,
   SessionUnrevertResponses,
   SessionUnshareErrors,
@@ -4323,6 +4325,40 @@ export class Session2 extends HeyApiClient {
     )
     return (options?.client ?? this.client).post<SessionUnrevertResponses, SessionUnrevertErrors, ThrowOnError>({
       url: "/session/{sessionID}/unrevert",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
+   * Unqueue prompt
+   *
+   * Remove a prompt waiting behind the running turn before the turn reads it, without interrupting the turn. Fails with 409 when no turn is running or the turn has already read the prompt.
+   */
+  public unqueue<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      messageID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "path", key: "messageID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<SessionUnqueueResponses, SessionUnqueueErrors, ThrowOnError>({
+      url: "/session/{sessionID}/message/{messageID}/unqueue",
       ...options,
       ...params,
     })

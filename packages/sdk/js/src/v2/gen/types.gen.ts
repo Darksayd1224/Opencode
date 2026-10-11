@@ -2604,6 +2604,14 @@ export type SessionBusyError = {
   message: string
 }
 
+export type PromptNotQueuedError = {
+  _tag: "PromptNotQueuedError"
+  sessionID: string
+  messageID: string
+  reason: "idle" | "started"
+  message: string
+}
+
 export type EventTuiPromptAppend = {
   type: "tui.prompt.append"
   properties: {
@@ -10407,6 +10415,48 @@ export type PermissionRespondResponses = {
 }
 
 export type PermissionRespondResponse = PermissionRespondResponses[keyof PermissionRespondResponses]
+
+export type SessionUnqueueData = {
+  body?: never
+  path: {
+    sessionID: string
+    messageID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/session/{sessionID}/message/{messageID}/unqueue"
+}
+
+export type SessionUnqueueErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * PromptNotQueuedError
+   */
+  409: PromptNotQueuedError
+}
+
+export type SessionUnqueueError = SessionUnqueueErrors[keyof SessionUnqueueErrors]
+
+export type SessionUnqueueResponses = {
+  /**
+   * The removed prompt
+   */
+  200: {
+    info: Message
+    parts: Array<Part>
+  }
+}
+
+export type SessionUnqueueResponse = SessionUnqueueResponses[keyof SessionUnqueueResponses]
 
 export type PartDeleteData = {
   body?: never

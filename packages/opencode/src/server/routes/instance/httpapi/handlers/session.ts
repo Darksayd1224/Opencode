@@ -36,7 +36,7 @@ import {
   SummarizePayload,
   UpdatePayload,
 } from "../groups/session"
-import { PermissionNotFoundError } from "../errors"
+import { notFound, PermissionNotFoundError, PromptNotQueuedError } from "../errors"
 import * as SessionError from "./session-errors"
 
 const tryParseJson = (text: string) =>
@@ -386,6 +386,28 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       return true
     })
 
+    const unqueue = Effect.fn("SessionHttpApi.unqueue")(function* (ctx: {
+      params: { sessionID: SessionID; messageID: MessageID }
+    }) {
+      yield* requireSession(ctx.params.sessionID)
+      return yield* promptSvc.unqueue(ctx.params).pipe(
+        Effect.catchTag("NotFoundError", (error) => Effect.fail(notFound(error.message))),
+        Effect.catchTag("SessionPromptNotQueuedError", (error) =>
+          Effect.fail(
+            new PromptNotQueuedError({
+              sessionID: error.sessionID,
+              messageID: error.messageID,
+              reason: error.reason,
+              message:
+                error.reason === "started"
+                  ? "The running turn has already picked up this prompt"
+                  : "This prompt is not queued behind a running turn",
+            }),
+          ),
+        ),
+      )
+    })
+
     const deletePart = Effect.fn("SessionHttpApi.deletePart")(function* (ctx: {
       params: { sessionID: SessionID; messageID: MessageID; partID: PartID }
     }) {
@@ -434,6 +456,7 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
       .handle("shell", shell)
       .handle("revert", revert)
       .handle("unrevert", unrevert)
+      .handle("unqueue", unqueue)
       .handle("permissionRespond", permissionRespond)
       .handle("deleteMessage", deleteMessage)
       .handle("deletePart", deletePart)

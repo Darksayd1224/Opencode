@@ -40,6 +40,8 @@ Click a prompt in the conversation to act on it:
 
 The two Revert actions are listed with [`revert.files`](#options)'s choice first. The conversation shows the revert at once; if the server refuses it, for example because a turn is running, it comes back and a notice says why.
 
+A prompt sent while a turn is running waits, marked **QUEUED**, until the turn reaches it. Click it and choose **Unqueue** to take it back: it leaves the queue and its text and attachments return to the prompt box. Anything typed there since goes to the stash; **Stash pop** brings it back. The running turn keeps going. If the turn has already picked the prompt up, nothing changes and a notice says so.
+
 ---
 
 ## File references

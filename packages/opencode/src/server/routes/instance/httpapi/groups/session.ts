@@ -20,7 +20,7 @@ import {
   WorkspaceRoutingQuery,
   WorkspaceRoutingQueryFields,
 } from "../middleware/workspace-routing"
-import { ApiNotFoundError, PermissionNotFoundError, SessionBusyError } from "../errors"
+import { ApiNotFoundError, PermissionNotFoundError, PromptNotQueuedError, SessionBusyError } from "../errors"
 import { described } from "./metadata"
 import { QueryBoolean } from "./query"
 import { ProviderV2 } from "@opencode-ai/core/provider"
@@ -100,6 +100,7 @@ export const SessionPaths = {
   unrevert: `${root}/:sessionID/unrevert`,
   permissions: `${root}/:sessionID/permissions/:permissionID`,
   deleteMessage: `${root}/:sessionID/message/:messageID`,
+  unqueue: `${root}/:sessionID/message/:messageID/unqueue`,
   deletePart: `${root}/:sessionID/message/:messageID/part/:partID`,
   updatePart: `${root}/:sessionID/message/:messageID/part/:partID`,
 } as const
@@ -417,6 +418,19 @@ export const SessionApi = HttpApi.make("session")
             summary: "Delete message",
             description:
               "Permanently delete a specific message and all of its parts from a session without reverting file changes.",
+          }),
+        ),
+        HttpApiEndpoint.post("unqueue", SessionPaths.unqueue, {
+          params: { sessionID: SessionID, messageID: MessageID },
+          query: WorkspaceRoutingQuery,
+          success: described(SessionV1.WithParts, "The removed prompt"),
+          error: [HttpApiError.BadRequest, ApiNotFoundError, PromptNotQueuedError],
+        }).annotateMerge(
+          OpenApi.annotations({
+            identifier: "session.unqueue",
+            summary: "Unqueue prompt",
+            description:
+              "Remove a prompt waiting behind the running turn before the turn reads it, without interrupting the turn. Fails with 409 when no turn is running or the turn has already read the prompt.",
           }),
         ),
         HttpApiEndpoint.delete("deletePart", SessionPaths.deletePart, {

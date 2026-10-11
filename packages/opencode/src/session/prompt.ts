@@ -54,6 +54,7 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { eq } from "drizzle-orm"
 import { SessionTable } from "@opencode-ai/core/session/sql"
 import { SessionReminders } from "./reminders"
+import { NotFoundError } from "@/storage/storage"
 import { SessionTools } from "./tools"
 import { LLMEvent } from "@opencode-ai/llm"
 
@@ -106,7 +107,21 @@ export interface Interface {
   readonly shell: (input: ShellInput) => Effect.Effect<SessionV1.WithParts, Session.BusyError>
   readonly command: (input: CommandInput) => Effect.Effect<SessionV1.WithParts, Image.Error>
   readonly resolvePromptParts: (template: string) => Effect.Effect<PromptInput["parts"]>
+  readonly unqueue: (input: {
+    sessionID: SessionID
+    messageID: MessageID
+  }) => Effect.Effect<SessionV1.WithParts, NotQueuedError | NotFoundError>
 }
+
+/**
+ * Unqueue was refused. `idle`: no turn is running that the prompt waits behind. `started`: the running turn has
+ * already read it, so the model has it or is about to.
+ */
+export class NotQueuedError extends Schema.TaggedErrorClass<NotQueuedError>()("SessionPromptNotQueuedError", {
+  sessionID: SessionID,
+  messageID: MessageID,
+  reason: Schema.Literals(["idle", "started"]),
+}) {}
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/SessionPrompt") {}
 
@@ -1049,6 +1064,46 @@ const layer = Layer.effect(
       return { info, parts }
     }, Effect.scoped)
 
+    // The running loop of each session, with the prompts it has read and the ones unqueued before it read them.
+    // `pickUp` and `unqueue` each check and update these without yielding in between, so a prompt is either read
+    // by the loop or withdrawn from it, never both.
+    const runs = new Map<SessionID, { started: number; seen: Set<MessageID>; withdrawn: Set<MessageID> }>()
+
+    const tracked = (sessionID: SessionID, work: Effect.Effect<SessionV1.WithParts>) =>
+      Effect.suspend(() => {
+        const run = { started: Date.now(), seen: new Set<MessageID>(), withdrawn: new Set<MessageID>() }
+        runs.set(sessionID, run)
+        return work.pipe(
+          Effect.ensuring(
+            Effect.sync(() => {
+              if (runs.get(sessionID) === run) runs.delete(sessionID)
+            }),
+          ),
+        )
+      })
+
+    const pickUp = (sessionID: SessionID, msgs: SessionV1.WithParts[]) => {
+      const run = runs.get(sessionID)
+      if (!run) return msgs
+      const kept = msgs.filter((msg) => !run.withdrawn.has(msg.info.id))
+      for (const msg of kept) if (msg.info.role === "user") run.seen.add(msg.info.id)
+      return kept
+    }
+
+    const unqueue = Effect.fn("SessionPrompt.unqueue")(function* (input: {
+      sessionID: SessionID
+      messageID: MessageID
+    }) {
+      const message = yield* MessageV2.get(input).pipe(Effect.provideService(Database.Service, database))
+      const run = runs.get(input.sessionID)
+      if (!run || message.info.role !== "user" || message.info.time.created < run.started)
+        return yield* new NotQueuedError({ ...input, reason: "idle" })
+      if (run.seen.has(input.messageID)) return yield* new NotQueuedError({ ...input, reason: "started" })
+      run.withdrawn.add(input.messageID)
+      yield* sessions.removeMessage(input)
+      return message
+    })
+
     const prompt: (input: PromptInput) => Effect.Effect<SessionV1.WithParts, Image.Error> = Effect.fn(
       "SessionPrompt.prompt",
     )(function* (input: PromptInput) {
@@ -1089,8 +1144,9 @@ const layer = Layer.effect(
           yield* status.set(sessionID, { type: "busy" })
           yield* Effect.logInfo("loop", { "session.id": sessionID, step })
 
-          let msgs = yield* MessageV2.filterCompactedEffect(sessionID).pipe(
-            Effect.provideService(Database.Service, database),
+          let msgs = pickUp(
+            sessionID,
+            yield* MessageV2.filterCompactedEffect(sessionID).pipe(Effect.provideService(Database.Service, database)),
           )
 
           const { user: lastUser, assistant: lastAssistant, finished: lastFinished, tasks } = MessageV2.latest(msgs)
@@ -1343,7 +1399,11 @@ const layer = Layer.effect(
     const loop: (input: LoopInput) => Effect.Effect<SessionV1.WithParts> = Effect.fn("SessionPrompt.loop")(function* (
       input: LoopInput,
     ) {
-      return yield* state.ensureRunning(input.sessionID, lastAssistant(input.sessionID), runLoop(input.sessionID))
+      return yield* state.ensureRunning(
+        input.sessionID,
+        lastAssistant(input.sessionID),
+        tracked(input.sessionID, runLoop(input.sessionID)),
+      )
     })
 
     const shell: (input: ShellInput) => Effect.Effect<SessionV1.WithParts, Session.BusyError> = Effect.fn(
@@ -1487,6 +1547,7 @@ const layer = Layer.effect(
       shell,
       command,
       resolvePromptParts,
+      unqueue,
     })
   }),
 )

@@ -1496,6 +1496,170 @@ it.instance("prompt submitted during an active run is included in the next LLM i
   }),
 )
 
+const turnsFor = Effect.fn("test.turnsFor")(function* (sessionID: SessionID, messageID: MessageID) {
+  const sessions = yield* Session.Service
+  const msgs = yield* sessions.messages({ sessionID })
+  return {
+    users: msgs.filter((msg) => msg.info.role === "user" && msg.info.id === messageID).length,
+    replies: msgs.filter((msg) => msg.info.role === "assistant" && msg.info.parentID === messageID).length,
+  }
+})
+
+// Unqueue
+
+const queuedPrompt = (sessionID: SessionID, messageID: MessageID, text: string) => ({
+  sessionID,
+  messageID,
+  agent: "build",
+  model: ref,
+  parts: [{ type: "text" as const, text }],
+})
+
+const stored = (sessionID: SessionID, messageID: MessageID) =>
+  pollWithTimeout(
+    MessageV2.get({ sessionID, messageID }).pipe(
+      Effect.map(() => true as const),
+      Effect.catch(() => Effect.succeed(undefined)),
+    ),
+    `message ${messageID} was never stored`,
+  )
+
+const sentToModel = Effect.fn("test.sentToModel")(function* (text: string) {
+  const { llm } = yield* useServerConfig(providerCfg)
+  return (yield* llm.inputs).filter((input) => JSON.stringify(input).includes(text)).length
+})
+
+const unqueueReason = (exit: Exit.Exit<unknown, unknown>) =>
+  Exit.isFailure(exit) ? (Cause.squash(exit.cause) as { reason?: string }).reason : "ok"
+
+it.instance("unqueue removes a prompt queued behind a running turn, and the turn never runs it", () =>
+  Effect.gen(function* () {
+    const { llm } = yield* useServerConfig(providerCfg)
+    const gate = yield* Deferred.make<void>()
+    const prompt = yield* SessionPrompt.Service
+    const sessions = yield* Session.Service
+    const chat = yield* sessions.create({ title: "Pinned" })
+    yield* llm.hold("first answer", deferredAsPromise(gate))
+    yield* llm.text("answer to the queued prompt")
+
+    const first = yield* prompt.prompt(queuedPrompt(chat.id, MessageID.ascending(), "first")).pipe(Effect.forkChild)
+    yield* llm.wait(1)
+    yield* waitForBusy(chat.id)
+    const queuedID = MessageID.ascending()
+    const queued = yield* prompt.prompt(queuedPrompt(chat.id, queuedID, "queued words")).pipe(Effect.forkChild)
+    yield* stored(chat.id, queuedID)
+
+    const removed = yield* prompt.unqueue({ sessionID: chat.id, messageID: queuedID })
+    expect(removed.info.id).toBe(queuedID)
+    expect(removed.parts.find((part) => part.type === "text")).toMatchObject({ text: "queued words" })
+
+    yield* Deferred.succeed(gate, void 0)
+    expect(Exit.isSuccess(yield* Fiber.await(first))).toBe(true)
+    expect(Exit.isSuccess(yield* Fiber.await(queued))).toBe(true)
+    expect(yield* llm.calls).toBe(1)
+    expect(yield* sentToModel("queued words")).toBe(0)
+    expect(yield* turnsFor(chat.id, queuedID)).toEqual({ users: 0, replies: 0 })
+  }),
+)
+
+it.instance("unqueue refuses a prompt the running turn has already read", () =>
+  Effect.gen(function* () {
+    const { llm } = yield* useServerConfig(providerCfg)
+    const gate = yield* Deferred.make<void>()
+    const second = yield* Deferred.make<void>()
+    const prompt = yield* SessionPrompt.Service
+    const sessions = yield* Session.Service
+    const chat = yield* sessions.create({ title: "Pinned" })
+    yield* llm.hold("first answer", deferredAsPromise(gate))
+    yield* llm.hold("answer to the queued prompt", deferredAsPromise(second))
+
+    const first = yield* prompt.prompt(queuedPrompt(chat.id, MessageID.ascending(), "first")).pipe(Effect.forkChild)
+    yield* llm.wait(1)
+    const queuedID = MessageID.ascending()
+    const queued = yield* prompt.prompt(queuedPrompt(chat.id, queuedID, "queued words")).pipe(Effect.forkChild)
+    yield* stored(chat.id, queuedID)
+    yield* Deferred.succeed(gate, void 0)
+    yield* llm.wait(2)
+
+    const exit = yield* prompt.unqueue({ sessionID: chat.id, messageID: queuedID }).pipe(Effect.exit)
+    expect(unqueueReason(exit)).toBe("started")
+    expect(Exit.isFailure(exit) && Cause.squash(exit.cause)).toBeInstanceOf(SessionPrompt.NotQueuedError)
+
+    yield* Deferred.succeed(second, void 0)
+    yield* Fiber.await(first)
+    yield* Fiber.await(queued)
+    expect(yield* turnsFor(chat.id, queuedID)).toEqual({ users: 1, replies: 1 })
+  }),
+)
+
+it.instance("unqueue refuses a prompt when no turn is running", () =>
+  Effect.gen(function* () {
+    const { llm } = yield* useServerConfig(providerCfg)
+    const prompt = yield* SessionPrompt.Service
+    const sessions = yield* Session.Service
+    const chat = yield* sessions.create({ title: "Pinned" })
+    yield* llm.text("done")
+    const id = MessageID.ascending()
+    yield* prompt.prompt(queuedPrompt(chat.id, id, "answered"))
+
+    const exit = yield* prompt.unqueue({ sessionID: chat.id, messageID: id }).pipe(Effect.exit)
+    expect(unqueueReason(exit)).toBe("idle")
+    expect(yield* turnsFor(chat.id, id)).toEqual({ users: 1, replies: 1 })
+  }),
+)
+
+it.instance(
+  "unqueue racing the turn's pickup either removes the prompt before the model sees it or refuses",
+  () =>
+    Effect.gen(function* () {
+      const { llm } = yield* useServerConfig(providerCfg)
+      const prompt = yield* SessionPrompt.Service
+      const sessions = yield* Session.Service
+      const outcomes = { ok: 0, started: 0 }
+      for (const round of Array.from({ length: 24 }, (_, index) => index)) {
+        yield* llm.reset
+        const gate = yield* Deferred.make<void>()
+        const answer = yield* Deferred.make<void>()
+        const chat = yield* sessions.create({ title: `race ${round}` })
+        const words = `queued words ${round}`
+        yield* llm.hold("first answer", deferredAsPromise(gate))
+        yield* llm.hold("answer to the queued prompt", deferredAsPromise(answer))
+
+        const first = yield* prompt.prompt(queuedPrompt(chat.id, MessageID.ascending(), "first")).pipe(Effect.forkChild)
+        yield* llm.wait(1)
+        const queuedID = MessageID.ascending()
+        const queued = yield* prompt.prompt(queuedPrompt(chat.id, queuedID, words)).pipe(Effect.forkChild)
+        yield* stored(chat.id, queuedID)
+
+        const unqueue = yield* Effect.sleep(Duration.millis(round * 2)).pipe(
+          Effect.andThen(prompt.unqueue({ sessionID: chat.id, messageID: queuedID })),
+          Effect.exit,
+          Effect.forkChild,
+        )
+        yield* Deferred.succeed(gate, void 0)
+        const exit = yield* Fiber.await(unqueue).pipe(Effect.flatten)
+        yield* Deferred.succeed(answer, void 0)
+        yield* Fiber.await(first)
+        yield* Fiber.await(queued)
+
+        const reason = unqueueReason(exit)
+        const turns = yield* turnsFor(chat.id, queuedID)
+        const seen = yield* sentToModel(words)
+        if (reason === "ok") {
+          outcomes.ok++
+          expect({ turns, seen }).toEqual({ turns: { users: 0, replies: 0 }, seen: 0 })
+          continue
+        }
+        expect(reason).toBe("started")
+        outcomes.started++
+        expect(turns).toEqual({ users: 1, replies: 1 })
+        expect(seen).toBeGreaterThan(0)
+      }
+      expect(outcomes.ok + outcomes.started).toBe(24)
+    }),
+  60_000,
+)
+
 it.instance("assertNotBusy fails with BusyError when loop running", () =>
   Effect.gen(function* () {
     const { llm } = yield* useServerConfig(providerCfg)

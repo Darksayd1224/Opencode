@@ -122,6 +122,17 @@ export class SessionBusyError extends Schema.TaggedErrorClass<SessionBusyError>(
   { httpApiStatus: 409 },
 ) {}
 
+export class PromptNotQueuedError extends Schema.TaggedErrorClass<PromptNotQueuedError>()(
+  "PromptNotQueuedError",
+  {
+    sessionID: Schema.String,
+    messageID: Schema.String,
+    reason: Schema.Literals(["idle", "started"]),
+    message: Schema.String,
+  },
+  { httpApiStatus: 409 },
+) {}
+
 export class QuestionNotFoundError extends Schema.TaggedErrorClass<QuestionNotFoundError>()(
   "QuestionNotFoundError",
   {

@@ -656,6 +656,36 @@ describe("session HttpApi", () => {
   )
 
   it.instance(
+    "unqueue answers 404 for an unknown message and 409 when no turn is running",
+    () =>
+      Effect.gen(function* () {
+        const test = yield* TestInstance
+        const headers = { "x-opencode-directory": test.directory }
+        const session = yield* createSession({ title: "unqueue" })
+        const message = yield* createTextMessage(session.id, "hello")
+
+        const missing = MessageID.ascending()
+        const unknown = yield* request(pathFor(SessionPaths.unqueue, { sessionID: session.id, messageID: missing }), {
+          headers,
+          method: "POST",
+        })
+        expect(unknown.status).toBe(404)
+
+        const idle = yield* request(
+          pathFor(SessionPaths.unqueue, { sessionID: session.id, messageID: message.info.id }),
+          { headers, method: "POST" },
+        )
+        expect(idle.status).toBe(409)
+        expect(yield* responseJson(idle)).toMatchObject({
+          _tag: "PromptNotQueuedError",
+          reason: "idle",
+          messageID: message.info.id,
+        })
+      }),
+    { git: true, config: { formatter: false, lsp: false } },
+  )
+
+  it.instance(
     "returns v2 public unavailable errors for unfinished session mutations",
     () =>
       Effect.gen(function* () {

@@ -48,6 +48,7 @@ import { DialogAlert } from "../../ui/dialog-alert"
 import { TodoItem } from "../../component/todo-item"
 import { DialogMessage } from "./dialog-message"
 import { revertSession, unrevertSession } from "./revert"
+import { usePromptStash } from "../../prompt/stash"
 import type { PromptInfo } from "../../component/prompt/history"
 import { DialogConfirm } from "../../ui/dialog-confirm"
 import { DialogTimeline } from "./dialog-timeline"
@@ -346,6 +347,7 @@ export function Session() {
   let seeded = false
   let scroll: ScrollBoxRenderable
   let prompt: PromptRef | undefined
+  const promptStash = usePromptStash()
 
   const undo = async (files: boolean) => {
     const status = sync.data.session_status?.[route.sessionID]
@@ -369,6 +371,17 @@ export function Session() {
       ),
     )
     dialog.clear()
+  }
+
+  // An unqueued prompt takes the composer; text typed there since goes to the stash rather than being lost.
+  const restorePrompt = (draft: PromptInfo) => {
+    const current = prompt?.current
+    if (!prompt || !current) return
+    if (current.input || current.parts.length > 0) {
+      promptStash.push({ input: current.input, parts: current.parts })
+      toast.show({ variant: "info", message: "What you had typed is in the stash: run Stash pop to get it back" })
+    }
+    prompt.set(draft)
   }
   const bind = (r: PromptRef | undefined) => {
     prompt = r
@@ -1295,7 +1308,9 @@ export function Session() {
                               <DialogMessage
                                 messageID={message.id}
                                 sessionID={route.sessionID}
+                                queued={pending() !== undefined && index() > pending()!}
                                 setPrompt={(promptInfo) => prompt?.set(promptInfo)}
+                                restorePrompt={restorePrompt}
                               />
                             ))
                           }}
