@@ -205,9 +205,16 @@ const scanLegacy = Effect.fnUntraced(function* (command: string, shell: string, 
       ),
     (tree) => Effect.sync(() => tree.delete()),
   )
-  // Grammar errors (e.g. a bare `--` under PowerShell) can hide every command node and skip permission checks.
-  if (error && result.commands.length === 0) return yield* scanPortable(command, shell, cwd)
-  return result
+  if (!error || (!powershell && result.commands.length > 0)) return result
+  // Grammar errors (e.g. a bare `--` under PowerShell) can hide command nodes and skip their permission checks.
+  // Keep legacy resources, and the saved prefixes derived from them, only when both scanners agree on what runs.
+  const portable = yield* scanPortable(command, shell, cwd)
+  const name = (resource: string) => resource.split(/\s/, 1)[0].toLowerCase()
+  const agree =
+    result.commands.length === portable.commands.length &&
+    result.commands.every((item, index) => name(item.resource) === name(portable.commands[index].resource)) &&
+    result.directories.join("\0") === portable.directories.join("\0")
+  return agree ? result : portable
 })
 
 export const scanPortable = Effect.fnUntraced(function* (command: string, shell: string, cwd: string) {
