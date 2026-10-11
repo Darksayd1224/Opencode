@@ -19,6 +19,14 @@ const gatewayTimeout = new AIError({
 const badGateway = new AIError({
   reason: new ProviderInternalError({ message: "Streaming response failed: [502] Upstream error" }),
 })
+const socketTimeout = new AIError({
+  reason: new TransportError({
+    message: "Timed out waiting for WebSocket data",
+    transport: "websocket",
+    operation: "read",
+    code: "idle-timeout",
+  }),
+})
 
 const input = (cause: AIError) => ({
   cause,
@@ -72,6 +80,12 @@ describe("SessionRunnerRetry.policy", () => {
   it.effect("keeps the general allowance for fast failures like 502", () =>
     Effect.gen(function* () {
       expect(yield* decisions(badGateway, 10)).toEqual(Array(10).fill(true))
+    }),
+  )
+
+  it.effect("keeps websocket idle timeouts on the general allowance", () =>
+    Effect.gen(function* () {
+      expect(yield* decisions(socketTimeout, 10)).toEqual(Array(10).fill(true))
     }),
   )
 })

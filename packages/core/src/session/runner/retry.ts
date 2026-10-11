@@ -61,14 +61,15 @@ const MAX_TIMEOUT_RETRIES = 3
 
 // Gateways report their own provider timeouts as ordinary failures: OpenCode Zen answers a dead
 // upstream in-band with `Streaming response failed: [504] Provider timed out after Nms`, and the
-// status never reaches the reason. The status and message checks keep those attempts on the same
-// cap as local transport timeouts instead of the full general allowance.
+// status never reaches the reason. Restricting the status and message checks to the gateway
+// failure shapes keeps WebSocket idle/connect timeouts and unrelated messages on the general
+// allowance.
 const isTimeout = (error: AIError) =>
-  error.reason._tag === "Timeout" ||
   (error.reason._tag === "Transport" && error.reason.code === "Timeout") ||
-  error.reason.http?.status === 408 ||
-  error.reason.http?.status === 504 ||
-  /\btimed?[- ]?out\b/i.test(error.reason.message)
+  ((error.reason._tag === "ProviderInternal" || error.reason._tag === "UnknownProvider") &&
+    (error.reason.http?.status === 408 ||
+      error.reason.http?.status === 504 ||
+      /\btimed?[- ]?out\b/i.test(error.reason.message)))
 
 export const policy = (sessionID: SessionSchema.ID) =>
   Effect.gen(function* () {
