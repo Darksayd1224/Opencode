@@ -16,6 +16,7 @@ type Surface = "popover" | "dialog"
 
 for (const scenario of [
   { entry: "slash command", destination: "main", status: "connected" },
+  { entry: "slash command", destination: "main from worktree", status: "connected" },
   { entry: "shortcut", destination: "main", status: "connected" },
   { entry: "slash command", destination: "existing worktree", status: "connected" },
   { entry: "slash command", destination: "new worktree", status: "connected" },
@@ -30,13 +31,14 @@ for (const scenario of [
   const failed = scenario.status !== "connected"
   test(`opens MCP from the draft ${entry} for ${destination} with ${scenario.status}`, async ({ page }) => {
     const name = destination === "existing worktree" ? "worktree-mcp" : "draft-mcp"
+    const target = destination === "main" || destination === "main from worktree" ? directory : workspace
     const creates: unknown[] = []
     const prompts: unknown[] = []
     const actions: Parameters<NonNullable<MockServerConfig["onMcpAction"]>>[0][] = []
     const input = {
       name: "DraftMcp",
-      directory,
-      project: { sandboxes: [workspace] },
+      directory: destination === "main from worktree" ? workspace : directory,
+      project: { worktree: directory, canonical: directory, sandboxes: [workspace] },
       provider: provider(),
       seed: { settings: { keybinds: { "mcp.toggle": "ctrl+;" } } },
       mcp: (target) => [{ name: target === workspace ? name : "draft-mcp", status: { status: "disabled" } }],
@@ -50,11 +52,17 @@ for (const scenario of [
     } satisfies WorkspaceInput
     const pending = destination === "new worktree" ? await openWorktreeDraft(page, input) : undefined
     const draft = pending ?? (await openDraft(page, input))
-    if (destination === "existing worktree") {
+    if (destination === "existing worktree" || destination === "main from worktree") {
       await page.getByRole("button", { name: "Local", exact: true }).click()
-      await page.getByRole("menuitem", { name: "Worktree", exact: true }).click()
-      await page.getByRole("menuitem", { name: "worktree", exact: true }).click()
-      await expect(page.getByRole("button", { name: "worktree", exact: true })).toBeVisible()
+      if (destination === "existing worktree") {
+        await page.getByRole("menuitem", { name: "Worktree", exact: true }).click()
+        await page.getByRole("menuitem", { name: "worktree", exact: true }).click()
+        await expect(page.getByRole("button", { name: "worktree", exact: true })).toBeVisible()
+      }
+      if (destination === "main from worktree") {
+        await page.getByRole("menuitem", { name: "Local repository", exact: true }).click()
+        await expect(page.getByRole("button", { name: "Local", exact: true })).toBeVisible()
+      }
     }
     const panel = page.getByRole("dialog", { name: "MCPs", exact: true })
 
@@ -81,9 +89,7 @@ for (const scenario of [
     }
     await expect(panel.getByRole("switch")).toBeChecked({ checked: !failed || !!pending })
     expect(actions).toEqual(
-      destination === "new worktree"
-        ? []
-        : [{ server: name, action: "connect", directory: destination === "main" ? directory : workspace }],
+      destination === "new worktree" ? [] : [{ server: name, action: "connect", directory: target }],
     )
     await panel.getByRole("button", { name: "Close", exact: true }).click()
     await expect(panel).toHaveCount(0)
@@ -114,19 +120,17 @@ for (const scenario of [
         await draft.editor.press("Enter")
       }
     }
-    if (failed && !pending) {
+    if ((failed || destination === "main from worktree") && !pending) {
       await draft.editor.fill("Continue without this MCP")
       await draft.editor.press("Enter")
     }
-    if (pending || failed) {
+    if (pending || failed || destination === "main from worktree") {
       await expect.poll(() => prompts).toHaveLength(1)
       expect(actions).toEqual([
-        { server: name, action: "connect", directory: destination === "main" ? directory : workspace },
+        { server: name, action: "connect", directory: target },
         ...(failed && pending ? [{ server: name, action: "disconnect", directory: workspace }] : []),
       ])
-      expect(creates).toEqual([
-        expect.objectContaining({ location: { directory: destination === "main" ? directory : workspace } }),
-      ])
+      expect(creates).toEqual([expect.objectContaining({ location: { directory: target } })])
     }
   })
 }
