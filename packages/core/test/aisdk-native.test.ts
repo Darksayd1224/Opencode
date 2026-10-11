@@ -93,6 +93,26 @@ describe("AISDKNative", () => {
     })
   })
 
+  test("moves OpenAI-compatible chat template options into the request body", () => {
+    expect(
+      map("@ai-sdk/openai-compatible", {
+        apiKey: "secret",
+        baseURL: "https://compatible.example/v1",
+        reasoningEffort: "high",
+        chat_template_kwargs: { enable_thinking: true, preserve_thinking: false },
+      }),
+    ).toEqual({
+      package: "@opencode/ai/providers/openai-compatible",
+      settings: {
+        apiKey: "secret",
+        baseURL: "https://compatible.example/v1",
+        provider: "test-provider",
+        reasoningEffort: "high",
+      },
+      body: { chat_template_kwargs: { enable_thinking: true, preserve_thinking: false } },
+    })
+  })
+
   test("maps Anthropic settings and request options to the native provider", () => {
     expect(
       map("@ai-sdk/anthropic", {
