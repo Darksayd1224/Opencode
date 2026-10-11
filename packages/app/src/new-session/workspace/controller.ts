@@ -279,6 +279,8 @@ export function createNewSessionWorkspaceController(input: {
     },
     project: {
       root: projectRoot,
+      branch: () => data.location.vcs.info({ directory: projectRoot() })?.branch.current,
+      worktreeBranch: (directory: string) => data.location.vcs.info({ directory })?.branch.current,
       workspaces: worktreeDirectories,
       managed: managedWorktrees,
       git: visible,

@@ -10,6 +10,8 @@ import { useLanguage } from "@/runtime/i18n/language"
 export function PromptWorkspaceSelector(props: {
   value: string
   projectRoot: string
+  projectBranch?: string
+  worktreeBranch?: (directory: string) => string | undefined
   workspaces: string[]
   branches: string[]
   branch?: string
@@ -49,7 +51,7 @@ export function PromptWorkspaceSelector(props: {
   })
 
   const icon = () => {
-    if (selected() === "main") return "monitor"
+    if (selected() === "main") return props.projectBranch ? "branch" : "monitor"
 
     if (selected() === "create") return "plus"
 
@@ -86,12 +88,15 @@ export function PromptWorkspaceSelector(props: {
 
   const label = () => {
     if (selected() === "main")
-      return language.t(summary() ? "session.new.workspace.local" : "session.new.workspace.triggerLocal")
+      return props.projectBranch ?? language.t(summary() ? "session.new.workspace.local" : "session.new.workspace.triggerLocal")
 
     if (props.value === "create") return language.t("workspace.new")
 
-    return getFilename(props.value)
+    return workspaceLabel(props.value)
   }
+
+  const workspaceLabel = (directory: string) =>
+    directory.startsWith(`${props.projectRoot}-`) ? directory.slice(props.projectRoot.length + 1) : getFilename(directory)
 
   return (
     <>
@@ -116,7 +121,7 @@ export function PromptWorkspaceSelector(props: {
           )
         }
         contentClass={props.onboarding ? "max-w-[280px]" : undefined}
-        class={summary() ? "min-w-0 w-full" : "min-w-0"}
+        class={summary() ? "min-w-0 w-full" : "min-w-0 flex-1"}
       >
         <Menu
           placement={placement()}
@@ -130,7 +135,7 @@ export function PromptWorkspaceSelector(props: {
             class={
               summary()
                 ? "session-summary-row"
-                : "flex h-6 min-w-0 max-w-[203px] items-center gap-1.5 rounded-sm px-1.5 hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none data-[expanded]:bg-v2-overlay-simple-overlay-pressed data-[expanded]:text-v2-text-text-muted"
+                : "flex h-6 w-full min-w-0 max-w-full items-center gap-1.5 rounded-sm px-1.5 hover:bg-v2-overlay-simple-overlay-hover focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:outline-none data-[expanded]:bg-v2-overlay-simple-overlay-pressed data-[expanded]:text-v2-text-text-muted"
             }
           >
             <Icon
@@ -152,11 +157,11 @@ export function PromptWorkspaceSelector(props: {
             />
           </Menu.Trigger>
           <Menu.Portal>
-            <Menu.Content class="w-[200px]">
+            <Menu.Content class="w-[min(32rem,calc(100vw-2rem))]">
               <Menu.Group>
                 <Menu.GroupLabel>{language.t("session.new.workspace.runIn")}</Menu.GroupLabel>
                 <Menu.Item onSelect={() => select("main")}>
-                  <Icon name="monitor" />
+                  <Icon name={props.projectBranch ? "branch" : "monitor"} />
                   <Tooltip
                     placement="right"
                     openDelay={800}
@@ -164,7 +169,7 @@ export function PromptWorkspaceSelector(props: {
                     contentClass="max-w-[140px]"
                     class="min-w-0 flex-1"
                   >
-                    <span class="min-w-0 truncate">{language.t("session.new.workspace.local")}</span>
+                    <span class="min-w-0 truncate">{props.projectBranch ?? language.t("session.new.workspace.local")}</span>
                   </Tooltip>
                   <Show when={selected() === "main"}>
                     <Icon name="check" size="small" class="shrink-0" />
@@ -220,7 +225,7 @@ export function PromptWorkspaceSelector(props: {
                     <span class="min-w-0 flex-1 truncate">{language.t("session.new.workspace.existingLabel")}</span>
                   </Menu.SubTrigger>
                   <Menu.Portal>
-                    <Menu.SubContent class="max-h-[66.667dvh] w-[200px] overflow-y-auto !pb-0 [&>[data-component=menu-v2-item]:last-child]:mb-0.5 [@media(max-height:600px)]:max-h-[calc(100dvh-48px)]">
+                    <Menu.SubContent class="max-h-[66.667dvh] w-[min(32rem,calc(100vw-2rem))] overflow-y-auto !pb-0 [&>[data-component=menu-v2-item]:last-child]:mb-0.5 [@media(max-height:600px)]:max-h-[calc(100dvh-48px)]">
                       <Show when={props.workspaces.length >= 10}>
                         <div class="flex h-7 items-center gap-2 rounded-sm ps-3 pe-2 text-v2-icon-icon-muted">
                           <Icon name="magnifying-glass" size="small" class="shrink-0" />
@@ -250,7 +255,15 @@ export function PromptWorkspaceSelector(props: {
                         {(workspace) => (
                           <Menu.Item onSelect={() => select(workspace)}>
                             <Icon name="outline-worktree" />
-                            <span class="min-w-0 flex-1 truncate">{getFilename(workspace)}</span>
+                            <span class="min-w-0 flex-1 truncate">{workspaceLabel(workspace)}</span>
+                            <Show when={props.worktreeBranch?.(workspace)}>
+                              {(branch) => (
+                                <>
+                                  <Icon name="branch" class="shrink-0 text-v2-icon-icon-muted" />
+                                  <span class="min-w-0 truncate">{branch()}</span>
+                                </>
+                              )}
+                            </Show>
                             <Show when={selected() === workspace}>
                               <Icon name="check" size="small" class="shrink-0" />
                             </Show>
@@ -287,7 +300,9 @@ export function PromptWorkspaceSelector(props: {
               </div>
             </Show>
           ) : (
-            <PromptGitStatus branch={props.branch} from={selected() === "create"} class="ms-1" />
+            <Show when={selected() !== "main" || !props.projectBranch}>
+              <PromptGitStatus branch={props.branch} from={selected() === "create"} class="ms-1" />
+            </Show>
           )
         }
       >
