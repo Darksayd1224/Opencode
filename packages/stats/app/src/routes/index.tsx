@@ -1564,7 +1564,7 @@ function TokenCostChart(props: {
             data-component="token-row"
             data-active={props.activeIndex === index() ? "true" : undefined}
             onClick={() => props.onActiveIndexChange(index())}
-            onPointerEnter={() => props.onActiveIndexChange(index())}
+            onPointerMove={() => props.onActiveIndexChange(index())}
           >
             <strong>{formatDollars(item.total)}</strong>
             <span>{item.model}</span>
@@ -1763,7 +1763,7 @@ function SessionCostChart(props: {
             data-variant="session"
             data-active={props.activeIndex === index() ? "true" : undefined}
             onClick={() => props.onActiveIndexChange(index())}
-            onPointerEnter={() => props.onActiveIndexChange(index())}
+            onPointerMove={() => props.onActiveIndexChange(index())}
           >
             <strong>{formatSessionCost(item.cost)}</strong>
             <span>{item.model}</span>
