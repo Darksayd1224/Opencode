@@ -148,6 +148,16 @@ describe("ShellParse", () => {
     ])
   })
 
+  test.each([
+    ['git grep -n "x" -- README.md', "git grep *"],
+    ["git rev-parse HEAD --", "git rev-parse *"],
+    ['node -e "console.log(1)" --', "node *"],
+    ["Get-Content README.md -TotalCount 1 --", "Get-Content *"],
+  ])("finds PowerShell commands containing a bare -- (%s)", async (command, save) => {
+    const result = await Effect.runPromise(ShellParse.scan(command, "pwsh", "/workspace", { portable: false }))
+    expect(result.commands).toEqual([{ resource: command, save }])
+  })
+
   test("does not permission directory changes separately", async () => {
     const result = await Effect.runPromise(ShellParse.scan("cd 'src dir' && git status", "/bin/bash", "/workspace"))
     expect(result).toEqual({
