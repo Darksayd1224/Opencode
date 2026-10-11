@@ -152,6 +152,28 @@ broader `deny`, after which the agent's own rules decide.
 
 `git status` falls back to the agent's `shell` rule; every other command is blocked.
 
+## Integrations
+
+Use `integration.use` to remove an MCP server or skill from its catalog. Resources
+are `mcp:<server-name>` for [MCP servers](/mcp-servers) and `skill:<id>` for [skills](/skills),
+including the skill's namespace when present.
+
+```jsonc
+{
+  "experimental": {
+    "policies": [
+      { "action": "integration.use", "resource": "mcp:github", "effect": "deny" },
+      { "action": "integration.use", "resource": "skill:*", "effect": "deny" },
+      { "action": "integration.use", "resource": "skill:team:review", "effect": "allow" },
+    ],
+  },
+}
+```
+
+This removes the `github` MCP server and its tools, and hides every skill except
+`team:review`. The last matching statement wins; an `allow` lifts an earlier policy
+deny but does not grant tool permissions.
+
 ## Precedence
 
 Ordinary settings let the nearest configuration win. Policies reverse that: statements
