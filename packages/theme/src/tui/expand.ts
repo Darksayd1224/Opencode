@@ -11,8 +11,6 @@ export function expandTheme<Definition extends ModeDefinition>(definition: Defin
   return {
     ...definition,
     ...expandTokens(definition),
-    // Contextual surfaces merge over the base afterwards, so partial overrides must not get
-    // absolute defaults injected here; a missing key keeps inheriting the base value.
     ...(definition["@dialog"] ? { "@dialog": expandTokens(definition["@dialog"], true) } : {}),
   }
 }
@@ -66,9 +64,7 @@ function expandBackground(
   contextual = false,
 ): BackgroundDefinition | undefined {
   if (!definition) return
-  // Relative fallbacks ($refs) are fine in contextual overrides, but the absolute
-  // scrim default would clobber the base during the contextual merge, so only the
-  // base level injects it.
+  // Base level only: an absolute default here would clobber the base during the @dialog merge.
   const backdrop = contextual ? definition.backdrop : (definition.backdrop ?? "#00000096")
   return {
     ...definition,
