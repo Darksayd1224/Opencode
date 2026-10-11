@@ -1,5 +1,8 @@
-import { expect, test } from "bun:test"
+import { expect, setDefaultTimeout, test } from "bun:test"
 import { wait, withPrompt, type PromptRig } from "../fixture/prompt-app"
+
+// The first test in the file also pays for starting the whole app.
+setDefaultTimeout(30_000)
 
 const UNDO = "\x1b[45;5u"
 const ESCAPE = "\x1b"
@@ -87,4 +90,27 @@ test("undo takes back an edit made in the dialog", async () => {
     expect(rig.text()).toBe("see [Pasted ~3 lines] ")
     expect(await submitted(rig)).toBe("see one\ntwo\nthree ")
   })
+})
+
+// The dialog starts a quarter of the way down the screen, so its editor gets only the rows below
+// that: a long paste scrolls inside it and the Inline button stays on screen.
+test.each([16, 24, 60])("a 50-line paste keeps Inline on screen at %i rows", async (height) => {
+  await withPrompt(
+    async (rig) => {
+      const text = Array.from({ length: 50 }, (_, index) => `line ${index + 1}`).join("\n")
+      await rig.press(`\x1b[200~${text}\x1b[201~`)
+      expect(rig.text()).toBe("[Pasted ~50 lines] ")
+      const at = find(rig, "[Pasted ~50 lines]")
+      await rig.click(at.x, at.y)
+      const lines = rig.frame().split("\n")
+      expect(lines.length).toBeLessThanOrEqual(height + 1)
+      expect(lines.findIndex((line) => line.includes("Pasted text 50 lines"))).toBeGreaterThanOrEqual(0)
+      const button = find(rig, "Inline")
+      expect(button.y).toBeLessThan(height)
+      await rig.click(button.x, button.y)
+      expect(rig.frame()).not.toContain("Pasted text")
+      expect(rig.text()).toBe(`${text} `)
+    },
+    { height },
+  )
 })

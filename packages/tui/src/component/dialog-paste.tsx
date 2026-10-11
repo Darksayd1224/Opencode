@@ -28,6 +28,15 @@ export function DialogPaste(props: DialogPasteProps) {
   let textarea: TextareaRenderable
   let applying = false
 
+  // The dialog starts a quarter of the way down the screen (ui/dialog.tsx), and around the editor
+  // it has 6 rows: its top padding, the title, two gaps, the Inline row and its bottom padding. The
+  // editor gets what is left above a one-row margin, so the Inline button stays on screen however
+  // long the text is, and it scrolls instead.
+  const editorHeight = () => {
+    const room = dimensions().height - Math.ceil(dimensions().height / 4) - 7
+    return Math.max(1, Math.min(room, Math.max(3, lines())))
+  }
+
   const state = () => ({ input: textarea.plainText, parts: [], mode: "normal" as const, cursor: textarea.cursorOffset })
 
   function step(direction: "undo" | "redo") {
@@ -75,7 +84,7 @@ export function DialogPaste(props: DialogPasteProps) {
       </box>
       <textarea
         width="100%"
-        height={Math.max(3, dimensions().height - 14)}
+        height={editorHeight()}
         initialValue={props.text}
         ref={(value: TextareaRenderable) => {
           textarea = value

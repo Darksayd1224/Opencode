@@ -39,10 +39,10 @@ export type PromptRig = {
 }
 
 // Runs the TUI in a session whose turn is running, and hands the test its prompt to type and click in.
-export async function withPrompt(body: (rig: PromptRig) => Promise<void>) {
+export async function withPrompt(body: (rig: PromptRig) => Promise<void>, options?: { height?: number }) {
   await using tmp = await tmpdir()
   await Bun.write(`${tmp.path}/kv.json`, "{}")
-  const setup = await createTestRenderer({ width: 120, height: 24, useThread: false })
+  const setup = await createTestRenderer({ width: 120, height: options?.height ?? 24, useThread: false })
   const core = await import("@opentui/core")
   mock.module("@opentui/core", () => ({ ...core, createCliRenderer: async () => setup.renderer }))
   const paths: string[] = []

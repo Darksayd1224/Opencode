@@ -1,5 +1,8 @@
-import { expect, test } from "bun:test"
+import { expect, setDefaultTimeout, test } from "bun:test"
 import { wait, withPrompt } from "../fixture/prompt-app"
+
+// The first test in the file also pays for starting the whole app.
+setDefaultTimeout(30_000)
 
 // Upstream's default undo and redo keys, as a kitty-protocol terminal sends them.
 const UNDO = "\x1b[45;5u"
