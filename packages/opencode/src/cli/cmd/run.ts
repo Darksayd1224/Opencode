@@ -17,7 +17,9 @@ import type { Argv } from "yargs"
 import path from "path"
 import { pathToFileURL } from "url"
 import { open } from "node:fs/promises"
-import { Effect } from "effect"
+import { Effect, Schema } from "effect"
+import { ConfigV1 } from "@opencode-ai/core/v1/config/config"
+import { ActiveManifest } from "@/session/active-manifest"
 import { UI } from "../ui"
 import { effectCmd } from "../effect-cmd"
 import { EOL } from "os"
@@ -490,6 +492,32 @@ export const RunCommand = effectCmd({
         }
 
         const base = args.continue ? (await sdk.session.list()).data?.find((item) => !item.parentID) : undefined
+
+        if (!args.attach && !args.continue && !args.session) {
+          const crashed = await Effect.runPromise(ActiveManifest.hasCrashed()).catch(() => false)
+          if (crashed) {
+            const cfg = await sdk.config.get().catch(() => undefined)
+            const config = Schema.decodeUnknownSync(ConfigV1.Info)(cfg?.data ?? {})
+            if (config.session?.auto_resume) {
+              const active = await Effect.runPromise(ActiveManifest.read()).catch(() => [])
+              if (active.length > 0) {
+                const candidate = ActiveManifest.resumeCandidate(active)
+                if (!candidate) return
+                const existing = await sdk.session.get({ sessionID: candidate.id }).catch(() => undefined)
+                if (existing?.data) {
+                  if (!(await Effect.runPromise(ActiveManifest.consume()))) return
+                  UI.println(UI.Style.TEXT_WARNING_BOLD + "!" + UI.Style.TEXT_NORMAL + ` crash detected — resuming last active session`)
+                  return {
+                    id: candidate.id,
+                    title: existing.data.title,
+                    directory: existing.data.directory,
+                  }
+                }
+              }
+            }
+            await Effect.runPromise(ActiveManifest.clear()).catch(() => {})
+          }
+        }
 
         if (base && args.fork) {
           const forked = await sdk.session.fork({
