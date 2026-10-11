@@ -25,9 +25,9 @@ type SubstituteInput = ParseSource & {
 
 /** Apply {env:VAR} and {file:path} substitutions to config text. */
 export const substitute = Effect.fn("ConfigVariable.substitute")(function* (input: SubstituteInput) {
-  const text = input.text.replace(
-    /\{env:([^}]+)\}/g,
-    (_, varName: string) => (input.env?.[varName] ?? process.env[varName]) || "",
+  // Values are spliced into JSON/JSONC text, same as {file:}.
+  const text = input.text.replace(/\{env:([^}]+)\}/g, (_, varName: string) =>
+    JSON.stringify((input.env?.[varName] ?? process.env[varName]) || "").slice(1, -1),
   )
   if (!text.includes("{file:")) return text
   return yield* substituteFiles(input, text)
