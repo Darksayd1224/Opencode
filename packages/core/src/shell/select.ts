@@ -174,6 +174,9 @@ export function args(file: string, command: string) {
   const n = name(file)
   if (n === "cmd") return ["/d", "/c", `chcp 65001 >nul 2>nul & ${command}`]
   if (ps(file)) {
+    if (/^\s*using\s/i.test(command)) {
+      return ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command]
+    }
     const preamble =
       "$ProgressPreference = 'SilentlyContinue'; $utf8 = [System.Text.UTF8Encoding]::new($false); [Console]::InputEncoding = $utf8; [Console]::OutputEncoding = $utf8; $OutputEncoding = $utf8; "
     return ["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", `${preamble}${command}`]

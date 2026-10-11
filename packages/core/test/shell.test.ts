@@ -68,6 +68,11 @@ describe("shell", () => {
     expect(args[4]).toContain('Write-Output "hello"')
   })
 
+  test("leaves out preamble for PowerShell using statements", () => {
+    const command = "using namespace System.Text; [StringBuilder]::new()"
+    expect(ShellSelect.args("pwsh", command)).toEqual(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command])
+  })
+
   test("forces UTF-8 python encoding on Windows", () => {
     expect(ShellSelect.env("win32")).toEqual({
       PYTHONIOENCODING: "utf-8",
